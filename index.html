@@ -1,0 +1,2280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Polling Center</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --navy: #1a2f4b;
+    --navy-light: #2c4a72;
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --border: #e1e4ea;
+    --text: #1c2331;
+    --muted: #6b7280;
+    --good: #1f7a4d;
+    --bad: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 60px;
+  }
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 16px 16px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  header h1 {
+    font-size: 19px;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+  }
+  header .sub {
+    font-size: 12.5px;
+    color: #cfd9e6;
+    margin-top: 2px;
+  }
+  button { font: inherit; cursor: pointer; }
+  .pill-btn {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .pill-btn:hover { background: rgba(255,255,255,0.2); }
+  main { max-width: 680px; margin: 0 auto; padding: 16px; }
+  select, input[type=text], input[type=password], input[type=email],
+  input[type=number], input[type=datetime-local], textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    background: #fff;
+    color: var(--text);
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  label { font-size: 13px; font-weight: 600; color: var(--muted); display: block; margin: 14px 0 5px; }
+  label:first-child { margin-top: 0; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .org-row { display: flex; gap: 8px; margin: 14px 0; }
+  .org-row select { flex: 1; }
+  .tabbar { display: flex; gap: 6px; margin: 4px 0 16px; flex-wrap: wrap; }
+  .tab {
+    flex: 1;
+    min-width: 70px;
+    text-align: center;
+    padding: 9px 6px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .tab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 16.5px; }
+  .card p.desc { color: var(--muted); font-size: 13.5px; margin: 4px 0 10px; white-space: pre-wrap; }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    margin-right: 6px;
+    margin-bottom: 4px;
+  }
+  .badge.meeting { background: #e6f0fb; color: #1554a3; }
+  .badge.choice { background: #eef1e9; color: #4a6b1f; }
+  .badge.election { background: #f7e9f0; color: #9c1f63; }
+  .badge.survey { background: #f0eefb; color: #5b3fa3; }
+  .badge.open { background: #e6f6ec; color: var(--good); }
+  .badge.closed { background: #f1f1f3; color: var(--muted); }
+  .badge.draft { background: #fdf1e0; color: #96600a; }
+  .badge.scheduled { background: #e6f0fb; color: #1554a3; }
+  .badge.archived { background: #f1f1f3; color: var(--muted); }
+  .badge.secret { background: #fdf1e0; color: #96600a; }
+  .badge.preview { background: #fdf1e0; color: #96600a; }
+  .meta-row { margin-bottom: 8px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .option-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .option-row:hover { border-color: var(--navy-light); }
+  .option-row input { width: 17px; height: 17px; flex-shrink: 0; }
+  .option-row .txt { flex: 1; font-size: 14.5px; }
+  .bar-wrap { margin-bottom: 10px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 4px; }
+  .bar-label .pct { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar-track { background: #eef0f3; border-radius: 6px; height: 8px; overflow: hidden; }
+  .bar-fill { background: var(--navy); height: 100%; border-radius: 6px; }
+  .bar-wrap.final .bar-fill { background: var(--good); }
+  .bar-wrap.final .bar-label span:first-child::before { content: "\2605  "; }
+  .bar-wrap.top .bar-fill { background: #3f7a3f; }
+  .respondents-line { font-size: 12px; color: var(--muted); margin: -4px 0 8px 2px; }
+  .most-avail { font-size: 11px; font-weight: 700; color: var(--good); margin-left: 6px; }
+  .btn {
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 11px 16px;
+    font-size: 14.5px;
+    font-weight: 600;
+    width: 100%;
+  }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn.secondary { background: #fff; color: var(--navy); border: 1px solid var(--navy); }
+  .btn.danger { background: #fff; color: var(--bad); border: 1px solid var(--bad); }
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .btn-row .btn { width: auto; flex: 1; padding: 8px 10px; font-size: 13px; min-width: 100px; }
+  .msg { padding: 10px 12px; border-radius: 8px; font-size: 13.5px; margin-bottom: 12px; }
+  .msg.error { background: #fdecea; color: var(--bad); }
+  .msg.success { background: #e7f6ed; color: var(--good); }
+  .msg.info { background: #eef2f7; color: var(--navy); }
+  .msg.warn { background: #fdf1e0; color: #96600a; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 10px; font-size: 14px; }
+  a.back {
+    display: inline-block;
+    margin-bottom: 12px;
+    color: var(--navy);
+    font-size: 13.5px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .option-edit-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .option-edit-row input[type=text] { flex: 1; }
+  .option-edit-row .rm {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 36px;
+    height: 38px;
+    color: var(--bad);
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .checkline { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 14px; }
+  .checkline input { width: 16px; height: 16px; flex-shrink: 0; }
+  .checkline label { margin: 0; font-weight: 400; color: var(--text); font-size: 14px; }
+  fieldset { border: none; padding: 0; margin: 0; }
+  .type-choice { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+  .type-choice label {
+    flex: 1;
+    min-width: 120px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 6px;
+    text-align: center;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    margin: 0;
+  }
+  .type-choice input { display: none; }
+  .type-choice label:has(input:checked) { border-color: var(--navy); background: #eef3f9; color: var(--navy); }
+  .type-choice .tdesc { display: block; font-weight: 400; color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .qblock {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: #fbfbfc;
+  }
+  .qblock-head { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .qblock-head input[type=text] { flex: 1; font-weight: 600; }
+  .qblock .rmq {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    color: var(--bad);
+    flex-shrink: 0;
+  }
+  .slot-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; flex-wrap: wrap; }
+  .slot-row input[type=datetime-local] { flex: 1; min-width: 150px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px 16px 40px; }
+  .stat-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .stat {
+    flex: 1;
+    min-width: 90px;
+    background: #f7f8fa;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+  }
+  .stat .n { font-size: 20px; font-weight: 700; color: var(--navy); }
+  .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
+  code.tok {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    background: #f7f8fa;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    word-break: break-all;
+  }
+  .linkbox {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    background: #f7f8fa;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    word-break: break-all;
+    margin-bottom: 8px;
+  }
+  .linkbox button { flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="top">
+    <div>
+      <h1 id="titleHome">Polling Center</h1>
+      <div class="sub" id="subtitle">Vote on meetings, decisions &amp; elections</div>
+    </div>
+    <button class="pill-btn" id="adminToggleBtn">Admin</button>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<footer>Polling Center &middot; Meetings &middot; Decisions &middot; Surveys &middot; Elections</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var SUPABASE_URL = "https://srbiynpchtwtpzcyrhgr.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNyYml5bnBjaHR3dHB6Y3lyaGdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMzI4MzAsImV4cCI6MjEwNDkwODgzMH0.8RLhotRZn8OXH4BPVIgw1d-mATA5rxW2aA_-p4_JoRg";
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ============================================================
+  // TIMEZONE
+  // ============================================================
+  // A short curated list of common IANA zones with friendly labels.
+  // If a poll/org is ever configured with a zone not in this list (e.g.
+  // set directly in the database), it is still added as an extra option
+  // so it always displays correctly and never falls back to the browser.
+  var TZ_LIST = [
+    ["America/New_York", "Eastern (New York)"],
+    ["America/Chicago", "Central (Chicago)"],
+    ["America/Denver", "Mountain (Denver)"],
+    ["America/Phoenix", "Mountain, no DST (Phoenix)"],
+    ["America/Los_Angeles", "Pacific (Los Angeles)"],
+    ["America/Anchorage", "Alaska"],
+    ["Pacific/Honolulu", "Hawaii"],
+    ["America/Sao_Paulo", "Brasília"],
+    ["America/Mexico_City", "Mexico City"],
+    ["Europe/London", "London"],
+    ["Europe/Paris", "Central Europe (Paris/Berlin)"],
+    ["Europe/Moscow", "Moscow"],
+    ["Africa/Johannesburg", "Johannesburg"],
+    ["Africa/Lagos", "Lagos"],
+    ["Africa/Nairobi", "Nairobi"],
+    ["Asia/Dubai", "Dubai"],
+    ["Asia/Kolkata", "India"],
+    ["Asia/Shanghai", "China"],
+    ["Asia/Tokyo", "Japan"],
+    ["Asia/Singapore", "Singapore"],
+    ["Australia/Sydney", "Sydney"],
+    ["Pacific/Auckland", "Auckland"],
+    ["UTC", "UTC"],
+  ];
+
+  function getZonedOffsetMs(utcMillis, timeZone) {
+    var dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: timeZone, hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    });
+    var parts = dtf.formatToParts(new Date(utcMillis)).reduce(function (acc, p) { acc[p.type] = p.value; return acc; }, {});
+    var asUtc = Date.UTC(
+      parseInt(parts.year, 10), parseInt(parts.month, 10) - 1, parseInt(parts.day, 10),
+      parts.hour === "24" ? 0 : parseInt(parts.hour, 10), parseInt(parts.minute, 10), parseInt(parts.second, 10)
+    );
+    return asUtc - utcMillis;
+  }
+
+  // "2026-09-14T15:30" wall-clock entered as local time IN timeZone -> real UTC ISO instant.
+  function zonedTimeToUtcIso(localValue, timeZone) {
+    if (!localValue) return null;
+    timeZone = timeZone || "UTC";
+    var m = localValue.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (!m) return null;
+    var naiveUtc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], 0);
+    var offset1 = getZonedOffsetMs(naiveUtc, timeZone);
+    var guess1 = naiveUtc - offset1;
+    var offset2 = getZonedOffsetMs(guess1, timeZone);
+    var guess2 = naiveUtc - offset2;
+    return new Date(guess2).toISOString();
+  }
+
+  // Real UTC ISO instant -> "YYYY-MM-DDTHH:MM" wall-clock reading in timeZone, for a datetime-local input.
+  function utcIsoToZonedInputValue(iso, timeZone) {
+    if (!iso) return "";
+    timeZone = timeZone || "UTC";
+    try {
+      var dtf = new Intl.DateTimeFormat("en-US", {
+        timeZone: timeZone, hourCycle: "h23",
+        year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+      });
+      var parts = dtf.formatToParts(new Date(iso)).reduce(function (acc, p) { acc[p.type] = p.value; return acc; }, {});
+      return parts.year + "-" + parts.month + "-" + parts.day + "T" + (parts.hour === "24" ? "00" : parts.hour) + ":" + parts.minute;
+    } catch (e) { return ""; }
+  }
+
+  function tzAbbrev(timeZone) {
+    try {
+      var parts = new Intl.DateTimeFormat("en-US", { timeZone: timeZone || "UTC", timeZoneName: "short" }).formatToParts(new Date());
+      var p = parts.find(function (x) { return x.type === "timeZoneName"; });
+      return p ? p.value : (timeZone || "UTC");
+    } catch (e) { return timeZone || "UTC"; }
+  }
+
+  function fmtDateTime(iso, tz) {
+    if (!iso) return "";
+    tz = tz || "UTC";
+    try {
+      return new Date(iso).toLocaleString(undefined, { timeZone: tz, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " " + tzAbbrev(tz);
+    } catch (e) { return iso; }
+  }
+  function fmtShort(iso, tz) {
+    if (!iso) return "";
+    tz = tz || "UTC";
+    try { return new Date(iso).toLocaleString(undefined, { timeZone: tz, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
+    catch (e) { return iso; }
+  }
+  function fmtTimeOnly(iso, tz) {
+    if (!iso) return "";
+    tz = tz || "UTC";
+    try { return new Date(iso).toLocaleTimeString(undefined, { timeZone: tz, hour: "numeric", minute: "2-digit" }); }
+    catch (e) { return iso; }
+  }
+
+  // ============================================================
+  // STATE
+  // ============================================================
+  var state = {
+    session: null,
+    isPlatformOwner: false,
+    adminOrgIds: null, // null = unknown/not admin at all; array of org ids otherwise
+    orgs: [],
+    orgId: localStorage.getItem("pc_org_id") || null,
+    orgListTab: "open", // public list tab
+    adminTab: "draft,scheduled,open,closed,archived".split(",")[2], // default "open"
+    route: { view: "list" },
+    busy: false,
+    bootstrapAttempted: false,
+  };
+
+  function deviceId() {
+    var id = localStorage.getItem("pc_device_id");
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now());
+      localStorage.setItem("pc_device_id", id);
+    }
+    return id;
+  }
+
+  // ============================================================
+  // HELPERS
+  // ============================================================
+  function esc(s) {
+    var d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function typeLabel(t) {
+    return { meeting: "Meeting availability", choice: "Choice / decision", election: "Election (secret ballot)", survey: "Survey / feedback" }[t] || t;
+  }
+  function statusLabel(s) {
+    return { draft: "Draft", scheduled: "Scheduled", open: "Open", closed: "Closed", archived: "Archived" }[s] || s;
+  }
+  function msgBox(cls, text) {
+    var m = el("div", "msg " + cls, text);
+    return m;
+  }
+  function uid() { return "t" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
+
+  function csvEscape(v) {
+    v = v == null ? "" : String(v);
+    if (/[",\n]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+    return v;
+  }
+  function downloadCSV(filename, rows) {
+    var csv = rows.map(function (r) { return r.map(csvEscape).join(","); }).join("\r\n");
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  function publicPollUrl(pollId) {
+    return location.origin + location.pathname + "#/poll/" + pollId;
+  }
+
+  // ============================================================
+  // POLL-BUILDER LOCAL DRAFT RECOVERY
+  //
+  // Purely a client-side safety net against in-progress poll-builder work
+  // getting wiped by a page reload, a Netlify redeploy landing mid-edit, or
+  // an auth interruption -- NOT a sync mechanism and NOT a substitute for
+  // save_poll_draft. Scoped to (admin id + org id + poll key) so one
+  // admin's local recovery copy never shows up for another admin or
+  // another org sharing the same browser profile. Holds only the same
+  // plain poll-builder fields already present in the in-memory `draft`
+  // object (title, description, poll type, questions/options/slots,
+  // access mode, timezone, open/close times, allow-change-vote,
+  // results-visibility, show-respondent-identities) -- never passwords,
+  // election voter codes, auth tokens, or any other secret, because none
+  // of those are ever part of that `draft` object in the first place
+  // (voter codes are generated through a separate flow after a poll is
+  // already published, never stored in the poll-builder draft).
+  // ============================================================
+  var DRAFT_RECOVERY_PREFIX = "pc_draft_recovery::";
+  function draftRecoveryKey(adminId, orgId, pollKey) {
+    return DRAFT_RECOVERY_PREFIX + adminId + "::" + orgId + "::" + pollKey;
+  }
+  function saveDraftRecovery(adminId, orgId, pollKey, draftObj) {
+    if (!adminId || !orgId || !pollKey) return;
+    try {
+      localStorage.setItem(
+        draftRecoveryKey(adminId, orgId, pollKey),
+        JSON.stringify({ savedAt: Date.now(), draft: draftObj })
+      );
+    } catch (e) { /* best-effort only -- storage full, private mode, etc. */ }
+  }
+  function loadDraftRecovery(adminId, orgId, pollKey) {
+    if (!adminId || !orgId || !pollKey) return null;
+    try {
+      var raw = localStorage.getItem(draftRecoveryKey(adminId, orgId, pollKey));
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function clearDraftRecovery(adminId, orgId, pollKey) {
+    if (!adminId || !orgId || !pollKey) return;
+    try { localStorage.removeItem(draftRecoveryKey(adminId, orgId, pollKey)); } catch (e) { /* ignore */ }
+  }
+  function debounce(fn, ms) {
+    var t = null;
+    return function () {
+      var args = arguments, ctx = this;
+      clearTimeout(t);
+      t = setTimeout(function () { fn.apply(ctx, args); }, ms);
+    };
+  }
+
+  // ============================================================
+  // ROUTER
+  // ============================================================
+  function parseHash() {
+    var h = location.hash.replace(/^#\/?/, "");
+    var parts = h.split("/").filter(Boolean);
+    if (!parts.length) return { view: "list" };
+    if (parts[0] === "poll" && parts[1]) return { view: "pollDetail", pollId: parts[1] };
+    if (parts[0] === "admin") {
+      if (!parts[1]) return { view: "admin" };
+      if (parts[1] === "new") return { view: "adminNew" };
+      if (parts[1] === "poll" && parts[2]) return { view: "adminPoll", pollId: parts[2] };
+      if (parts[1] === "edit" && parts[2]) return { view: "adminEdit", pollId: parts[2] };
+    }
+    return { view: "list" };
+  }
+  function navigate(hash) { location.hash = hash; }
+  window.addEventListener("hashchange", function () { state.route = parseHash(); render(); });
+
+  // ============================================================
+  // AUTH
+  // ============================================================
+  sb.auth.onAuthStateChange(function (evt, session) {
+    state.session = session;
+    // IMPORTANT: Supabase fires this callback on every auth event,
+    // including TOKEN_REFRESHED -- which happens automatically and
+    // silently in the background, well before real session expiry, as
+    // part of normal token upkeep. It does NOT mean the user's session
+    // expired or that anything about their identity changed. Calling the
+    // full render() here on every TOKEN_REFRESHED used to wipe out
+    // whatever the admin had in progress (e.g. an unsaved poll-builder
+    // form), because render() tears down and rebuilds #app from scratch.
+    // Only actual identity transitions should trigger a re-render.
+    if (evt === "SIGNED_IN" || evt === "SIGNED_OUT" || evt === "USER_UPDATED") {
+      refreshAdminContext().then(render);
+    }
+  });
+
+  async function refreshAdminContext() {
+    if (!state.session) { state.isPlatformOwner = false; state.adminOrgIds = null; return; }
+    var uidv = state.session.user.id;
+    try {
+      var ownerRes = await sb.rpc("is_platform_owner", { p_uid: uidv });
+      state.isPlatformOwner = !!ownerRes.data;
+    } catch (e) { state.isPlatformOwner = false; }
+    try {
+      var rows = await sb.from("org_admins").select("org_id").eq("user_id", uidv);
+      var scoped = (rows.data || []).map(function (r) { return r.org_id; });
+      state.adminOrgIds = state.isPlatformOwner ? "all" : scoped;
+    } catch (e) { state.adminOrgIds = state.isPlatformOwner ? "all" : []; }
+  }
+  function isAdminOfOrg(orgId) {
+    if (!state.session) return false;
+    if (state.adminOrgIds === "all") return true;
+    return Array.isArray(state.adminOrgIds) && state.adminOrgIds.indexOf(orgId) !== -1;
+  }
+  function hasAnyAdminRole() {
+    return state.isPlatformOwner || (Array.isArray(state.adminOrgIds) && state.adminOrgIds.length > 0);
+  }
+
+  // ============================================================
+  // ORGS
+  // ============================================================
+  async function loadOrgs() {
+    var res = await sb.from("organizations").select("id,name,default_timezone").order("name");
+    if (res.error) throw res.error;
+    state.orgs = res.data || [];
+    if (!state.orgId || !state.orgs.some(function (o) { return o.id === state.orgId; })) {
+      state.orgId = state.orgs.length ? state.orgs[0].id : null;
+    }
+    if (state.orgId) localStorage.setItem("pc_org_id", state.orgId);
+  }
+  function orgName(id) {
+    var o = state.orgs.find(function (x) { return x.id === id; });
+    return o ? o.name : "";
+  }
+  function currentOrgDefaultTz() {
+    var o = state.orgs.find(function (x) { return x.id === state.orgId; });
+    return (o && o.default_timezone) || "America/Chicago";
+  }
+  function orgSwitcher(onChange) {
+    var wrap = el("div", "org-row");
+    var select = document.createElement("select");
+    if (!state.orgs.length) {
+      var o = el("option", null, "No organizations yet");
+      select.appendChild(o); select.disabled = true;
+    } else {
+      state.orgs.forEach(function (o) {
+        var opt = el("option", null, o.name);
+        opt.value = o.id;
+        if (o.id === state.orgId) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+    select.addEventListener("change", function () {
+      state.orgId = select.value;
+      localStorage.setItem("pc_org_id", state.orgId);
+      if (onChange) onChange(); else render();
+    });
+    wrap.appendChild(select);
+    return wrap;
+  }
+
+  // ============================================================
+  // HEADER / NAV
+  // ============================================================
+  var app = document.getElementById("app");
+  var subtitle = document.getElementById("subtitle");
+  var adminToggleBtn = document.getElementById("adminToggleBtn");
+  document.getElementById("titleHome").addEventListener("click", function () { navigate("#/"); });
+
+  function updateAdminBtn() {
+    if (state.session) {
+      adminToggleBtn.textContent = "Sign out";
+    } else {
+      adminToggleBtn.textContent = "Admin";
+    }
+  }
+  adminToggleBtn.addEventListener("click", async function () {
+    if (state.session) {
+      await sb.auth.signOut();
+      state.session = null; state.isPlatformOwner = false; state.adminOrgIds = null; state.bootstrapAttempted = false;
+      navigate("#/");
+    } else {
+      navigate("#/admin");
+    }
+  });
+
+  // ============================================================
+  // PUBLIC: poll list
+  // ============================================================
+  async function renderPublicList(container) {
+    subtitle.textContent = "Vote on meetings, decisions & elections";
+    container.appendChild(orgSwitcher());
+
+    if (!state.orgId) {
+      container.appendChild(el("div", "empty", "No organizations have been set up yet."));
+      return;
+    }
+    var tabbar = el("div", "tabbar");
+    [["open", "Open polls"], ["closed", "Past results"]].forEach(function (pair) {
+      var b = el("button", "tab" + (state.orgListTab === pair[0] ? " active" : ""), pair[1]);
+      b.addEventListener("click", function () { state.orgListTab = pair[0]; render(); });
+      tabbar.appendChild(b);
+    });
+    container.appendChild(tabbar);
+
+    var listWrap = el("div", null); listWrap.appendChild(el("div", "empty", "Loading…"));
+    container.appendChild(listWrap);
+
+    try {
+      var res = await sb.rpc("list_public_polls", { p_org_id: state.orgId, p_status: state.orgListTab });
+      if (res.error) throw res.error;
+      var polls = res.data || [];
+      listWrap.innerHTML = "";
+      if (!polls.length) {
+        listWrap.appendChild(el("div", "empty", state.orgListTab === "open" ? "No open polls right now." : "No past polls yet."));
+        return;
+      }
+      polls.forEach(function (p) { listWrap.appendChild(publicPollCard(p)); });
+    } catch (e) {
+      listWrap.innerHTML = "";
+      listWrap.appendChild(msgBox("error", e.message || String(e)));
+    }
+  }
+
+  function publicPollCard(p) {
+    var card = el("div", "card"); card.style.cursor = "pointer";
+    var badges = el("div", "meta-row");
+    badges.innerHTML =
+      '<span class="badge ' + p.poll_type + '">' + esc(typeLabel(p.poll_type)) + "</span>" +
+      '<span class="badge ' + p.status + '">' + esc(statusLabel(p.status)) + "</span>" +
+      (p.anonymous ? '<span class="badge secret">Secret ballot</span>' : "");
+    card.appendChild(badges);
+    card.appendChild(el("h3", null, p.title));
+    if (p.description) card.appendChild(el("p", "desc", p.description));
+    var foot = el("div", "muted");
+    var bits = [];
+    if (p.close_at) bits.push((p.status === "closed" ? "Closed " : "Closes ") + fmtShort(p.close_at, p.timezone));
+    else if (p.status === "open") bits.push("Open now");
+    foot.textContent = bits.join(" · ");
+    card.appendChild(foot);
+    card.addEventListener("click", function () { navigate("#/poll/" + p.id); });
+    return card;
+  }
+
+  // ============================================================
+  // PUBLIC: poll detail + voting
+  // ============================================================
+  function currentDedupKeyFor(poll) {
+    if (poll.anonymous) return null;
+    if (poll.access_mode === "device") return deviceId();
+    if (poll.access_mode === "identified") return localStorage.getItem("pc_email_" + poll.id) || null;
+    return null;
+  }
+
+  async function renderPublicPollDetail(container, pollId) {
+    var back = el("a", "back", "‹ All polls");
+    back.addEventListener("click", function () { navigate("#/"); });
+    container.appendChild(back);
+
+    var wrap = el("div", null); wrap.appendChild(el("div", "empty", "Loading…"));
+    container.appendChild(wrap);
+
+    var res = await sb.rpc("get_public_poll_detail", { p_poll_id: pollId });
+    if (res.error || !res.data || res.data.error) {
+      wrap.innerHTML = "";
+      wrap.appendChild(msgBox("error", "This poll isn't available. It may not be open yet, or the link may be incorrect."));
+      return;
+    }
+    var poll = res.data;
+    wrap.innerHTML = "";
+
+    var head = el("div", "card");
+    var badges = el("div", "meta-row");
+    badges.innerHTML =
+      '<span class="badge ' + poll.poll_type + '">' + esc(typeLabel(poll.poll_type)) + "</span>" +
+      '<span class="badge ' + poll.status + '">' + esc(statusLabel(poll.status)) + "</span>" +
+      (poll.anonymous ? '<span class="badge secret">Secret ballot</span>' : "");
+    head.appendChild(badges);
+    head.appendChild(el("h3", null, poll.title));
+    if (poll.description) head.appendChild(el("p", "desc", poll.description));
+    if (poll.close_at) head.appendChild(el("div", "muted", (poll.status === "closed" ? "Closed " : "Closes ") + fmtDateTime(poll.close_at, poll.timezone)));
+    wrap.appendChild(head);
+
+    subtitle.textContent = poll.title;
+
+    var castKey = "pc_cast_" + poll.id;
+    var respondedKey = "pc_responded_" + poll.id;
+    var alreadyCast = poll.anonymous ? localStorage.getItem(castKey) === "1" : localStorage.getItem(respondedKey) === "1";
+
+    var canRespond = poll.status === "open" && (!alreadyCast || (!poll.anonymous && poll.allow_change_vote));
+
+    var bodyWrap = el("div", null);
+    wrap.appendChild(bodyWrap);
+
+    function showResponded() {
+      bodyWrap.innerHTML = "";
+      var infoCard = el("div", "card");
+      infoCard.appendChild(msgBox("success", poll.anonymous ? "Your ballot was recorded. Thanks for voting." : "Thanks — your response was recorded."));
+      bodyWrap.appendChild(infoCard);
+      appendResults(bodyWrap, poll, currentDedupKeyFor(poll));
+    }
+
+    if (canRespond) {
+      bodyWrap.appendChild(buildResponseForm(poll, castKey, respondedKey, showResponded));
+    } else if (poll.status !== "open") {
+      var infoCard = el("div", "card");
+      infoCard.appendChild(msgBox("info", poll.status === "closed" ? "This poll is closed." : "This poll isn't open yet."));
+      bodyWrap.appendChild(infoCard);
+      await appendResults(bodyWrap, poll, currentDedupKeyFor(poll));
+    } else {
+      showResponded();
+    }
+  }
+
+  function optionLabelFull(o, tz) {
+    if (o.slot_start) {
+      var s = fmtDateTime(o.slot_start, tz);
+      if (o.slot_end) s += " – " + fmtTimeOnly(o.slot_end, tz);
+      return s;
+    }
+    return o.label;
+  }
+
+  function buildResponseForm(poll, castKey, respondedKey, onSuccess) {
+    var card = el("div", "card");
+    var form = document.createElement("form");
+
+    var needsToken = poll.anonymous;
+    var needsIdentity = poll.access_mode === "identified" || poll.access_mode === "restricted_list";
+
+    var tokenInput = null;
+    if (needsToken) {
+      form.appendChild(el("label", null, "Your voting code"));
+      tokenInput = document.createElement("input");
+      tokenInput.type = "text";
+      tokenInput.placeholder = "Enter the code you were given";
+      tokenInput.autocomplete = "off";
+      form.appendChild(tokenInput);
+      form.appendChild(el("div", "hint", "This is a secret ballot. Your code lets you vote once — it is never linked to your selections."));
+    }
+
+    var nameInput = null, emailInput = null;
+    if (needsIdentity) {
+      form.appendChild(el("label", null, "Your name"));
+      nameInput = document.createElement("input"); nameInput.type = "text"; nameInput.maxLength = 120;
+      form.appendChild(nameInput);
+      form.appendChild(el("label", null, "Your email"));
+      emailInput = document.createElement("input"); emailInput.type = "email"; emailInput.maxLength = 200;
+      form.appendChild(emailInput);
+    }
+
+    var answerGetters = [];
+    poll.questions.forEach(function (q) {
+      form.appendChild(questionField(q, answerGetters, poll.timezone));
+    });
+
+    var msgHolder = el("div", null);
+    form.appendChild(msgHolder);
+
+    var submitBtn = el("button", "btn", poll.anonymous ? "Cast ballot" : "Submit response");
+    submitBtn.type = "submit";
+    submitBtn.style.marginTop = "14px";
+    form.appendChild(submitBtn);
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      msgHolder.innerHTML = "";
+      var answers;
+      try { answers = answerGetters.map(function (g) { return g(); }); }
+      catch (err) { msgHolder.appendChild(msgBox("error", err.message)); return; }
+
+      if (needsToken && !tokenInput.value.trim()) {
+        msgHolder.appendChild(msgBox("error", "Enter your voting code.")); return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Submitting…";
+      try {
+        if (needsToken) {
+          var r1 = await sb.rpc("cast_anonymous_ballot", { p_poll_id: poll.id, p_token: tokenInput.value.trim(), p_answers: answers });
+          if (r1.error) throw r1.error;
+          localStorage.setItem(castKey, "1");
+        } else {
+          var dedupKey = poll.access_mode === "device" ? deviceId()
+            : (emailInput && emailInput.value.trim() ? emailInput.value.trim().toLowerCase() : null);
+          var r2 = await sb.rpc("submit_identified_response", {
+            p_poll_id: poll.id,
+            p_dedup_key: dedupKey,
+            p_respondent_name: nameInput ? nameInput.value.trim() : null,
+            p_respondent_email: emailInput ? emailInput.value.trim() : null,
+            p_answers: answers,
+          });
+          if (r2.error) throw r2.error;
+          localStorage.setItem(respondedKey, "1");
+          if (poll.access_mode === "identified" && dedupKey) localStorage.setItem("pc_email_" + poll.id, dedupKey);
+        }
+        onSuccess();
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = poll.anonymous ? "Cast ballot" : "Submit response";
+        msgHolder.innerHTML = "";
+        msgHolder.appendChild(msgBox("error", friendlyError(err)));
+      }
+    });
+
+    card.appendChild(form);
+    return card;
+  }
+
+  function friendlyError(err) {
+    var m = (err && err.message) || String(err);
+    var map = {
+      invalid_token: "That voting code isn't valid.",
+      token_already_used: "That voting code has already been used.",
+      poll_not_open: "This poll isn't open right now.",
+      poll_not_open_yet: "This poll hasn't opened yet.",
+      poll_past_close: "This poll has already closed.",
+      already_responded: "You've already responded to this poll.",
+      missing_required_question: "Please answer all required questions.",
+      question_requires_a_selection: "Please make a selection for every required question.",
+      too_many_selections: "You selected more options than this question allows.",
+      only_one_selection_allowed: "This question only allows one selection.",
+      not_authorized: "You don't have permission to do that.",
+      title_required: "Add a title.",
+      at_least_one_question_required: "Add at least one question.",
+      elections_require_a_close_date: "Elections need a close date/time.",
+      choice_question_needs_two_options: "Each choice question needs at least two options.",
+      availability_needs_at_least_one_slot: "Add at least one time slot.",
+      poll_not_draft_editable: "Only draft polls can be edited. Duplicate this poll to make changes.",
+    };
+    for (var k in map) if (m.indexOf(k) !== -1) return map[k];
+    return m;
+  }
+
+  function questionField(q, answerGetters, tz) {
+    var wrap = el("div", null);
+    wrap.appendChild(el("label", null, q.prompt + (q.required ? " *" : " (optional)")));
+
+    if (q.question_type === "availability" || q.question_type === "multi_select" ||
+        (q.question_type === "single_select" && (q.max_selections || 1) > 1)) {
+      var isMulti = q.question_type !== "single_select";
+      var checks = [];
+      var writeInBox = null;
+      q.options.slice().sort(function (a, b) { return a.order_index - b.order_index; }).forEach(function (o) {
+        var row = el("label", "option-row");
+        var input = document.createElement("input");
+        input.type = isMulti ? "checkbox" : "radio";
+        input.name = q.id; input.value = o.id;
+        row.appendChild(input);
+        row.appendChild(el("span", "txt", optionLabelFull(o, tz)));
+        wrap.appendChild(row);
+        checks.push({ input: input, opt: o });
+        if (o.is_write_in) {
+          input.addEventListener("change", function () { writeInBox.style.display = input.checked ? "block" : "none"; });
+        }
+      });
+      if (q.allow_write_in) {
+        writeInBox = document.createElement("input");
+        writeInBox.type = "text";
+        writeInBox.placeholder = "Write-in name";
+        writeInBox.style.display = "none";
+        writeInBox.style.marginTop = "6px";
+        wrap.appendChild(writeInBox);
+      }
+      answerGetters.push(function () {
+        var picked = checks.filter(function (c) { return c.input.checked; });
+        if (q.max_selections && picked.length > q.max_selections) {
+          throw new Error("Select up to " + q.max_selections + " for “" + q.prompt + "”.");
+        }
+        var ans = { question_id: q.id, option_ids: picked.map(function (c) { return c.opt.id; }) };
+        if (writeInBox && picked.some(function (c) { return c.opt.is_write_in; })) ans.text_answer = writeInBox.value.trim();
+        return ans;
+      });
+    } else if (q.question_type === "single_select" || q.question_type === "yesno") {
+      // Server-side (save_poll_draft) always creates real option rows for
+      // Yes/No questions, so this renders exactly like any other
+      // single-select question — no synthetic client-side option ids.
+      var opts = q.options.slice().sort(function (a, b) { return a.order_index - b.order_index; });
+      var radios = [];
+      opts.forEach(function (o) {
+        var row = el("label", "option-row");
+        var input = document.createElement("input");
+        input.type = "radio"; input.name = q.id; input.value = o.id;
+        row.appendChild(input);
+        row.appendChild(el("span", "txt", optionLabelFull(o, tz)));
+        wrap.appendChild(row);
+        radios.push({ input: input, opt: o });
+      });
+      answerGetters.push(function () {
+        var picked = radios.find(function (r) { return r.input.checked; });
+        if (!picked) { if (q.required) throw new Error("Answer “" + q.prompt + "”."); return { question_id: q.id, option_ids: [] }; }
+        return { question_id: q.id, option_ids: [picked.opt.id] };
+      });
+    } else if (q.question_type === "rating") {
+      var row2 = el("div", "type-choice");
+      var min = q.rating_min || 1, max = q.rating_max || 5;
+      var ratingRadios = [];
+      for (var i = min; i <= max; i++) {
+        (function (val) {
+          var lbl = document.createElement("label");
+          var inp = document.createElement("input");
+          inp.type = "radio"; inp.name = q.id; inp.value = val;
+          lbl.appendChild(inp);
+          var span = document.createElement("span"); span.textContent = String(val);
+          lbl.appendChild(span);
+          row2.appendChild(lbl);
+          ratingRadios.push({ input: inp, val: val });
+        })(i);
+      }
+      wrap.appendChild(row2);
+      answerGetters.push(function () {
+        var picked = ratingRadios.find(function (r) { return r.input.checked; });
+        if (!picked) { if (q.required) throw new Error("Rate “" + q.prompt + "”."); return { question_id: q.id }; }
+        return { question_id: q.id, rating_value: picked.val };
+      });
+    } else if (q.question_type === "text") {
+      var ta = document.createElement("textarea");
+      wrap.appendChild(ta);
+      answerGetters.push(function () {
+        if (q.required && !ta.value.trim()) throw new Error("Answer “" + q.prompt + "”.");
+        return { question_id: q.id, text_answer: ta.value.trim() };
+      });
+    }
+    return wrap;
+  }
+
+  // ---- results rendering (shared by public + admin) ----
+  async function appendResults(container, poll, dedupKeyForVisibility) {
+    var res = await sb.rpc("get_poll_results", { p_poll_id: poll.id, p_dedup_key: dedupKeyForVisibility || null });
+    if (res.error) { container.appendChild(msgBox("error", "Couldn't load results.")); return; }
+    var data = res.data;
+    if (!data.visible) {
+      var reasonText = {
+        election_not_closed: "This is a secret ballot election. Results stay hidden — including from the organizer — until voting closes.",
+        not_open_yet: "Results aren't available until this poll opens.",
+        not_yet_visible: "Results aren't visible yet for this poll.",
+        not_found: "Poll not found.",
+      }[data.reason] || "Results are not visible right now.";
+      container.appendChild(msgBox("info", reasonText));
+      return;
+    }
+    var card = el("div", "card");
+    card.appendChild(el("h3", null, "Results"));
+    card.appendChild(el("div", "muted", data.total_responses + " total " + (data.anonymous ? "ballot" + (data.total_responses === 1 ? "" : "s") : "response" + (data.total_responses === 1 ? "" : "s"))));
+    data.questions.forEach(function (q) {
+      var qWrap = el("div", null); qWrap.style.marginTop = "14px";
+      qWrap.appendChild(el("div", null, q.prompt)).style.fontWeight = "600";
+      if (q.question_type === "text") {
+        (q.text_answers || []).forEach(function (t) {
+          var line = el("div", "muted"); line.style.padding = "4px 0";
+          line.textContent = (t.respondent ? t.respondent + ": " : "") + t.text;
+          qWrap.appendChild(line);
+        });
+        if (!q.text_answers || !q.text_answers.length) qWrap.appendChild(el("div", "muted", "No responses yet."));
+      } else if (q.question_type === "rating" && q.rating) {
+        var rc = q.rating.count || 0;
+        qWrap.appendChild(el("div", "muted", rc ? ("Average: " + q.rating.average + " (" + rc + " rating" + (rc === 1 ? "" : "s") + ")") : "No ratings yet."));
+        (q.rating.distribution || []).forEach(function (d) {
+          var pct = rc > 0 ? Math.round((d.count / rc) * 100) : 0;
+          var rowWrap = el("div", "bar-wrap");
+          rowWrap.innerHTML =
+            '<div class="bar-label"><span>' + esc(String(d.value)) + '</span><span class="pct">' + d.count + " (" + pct + "%)</span></div>" +
+            '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>';
+          qWrap.appendChild(rowWrap);
+        });
+      } else {
+        // Percentage denominator is the number of DISTINCT respondents who
+        // answered this question — never the sum of votes across options.
+        // That sum only equals the respondent count for single-select
+        // questions; for multi-select/availability one respondent can
+        // contribute votes to several options at once, which would
+        // otherwise understate every percentage (e.g. 8 of 10 respondents
+        // picking Tuesday must read 8/10 = 80%, not get diluted by
+        // however many other slots those 8 also picked).
+        var total = q.respondents_answering || 0;
+        var options = (q.options || []).slice();
+        var maxVotes = options.reduce(function (m, o) { return Math.max(m, o.votes || 0); }, 0);
+        options.forEach(function (o) {
+          var pct = total > 0 ? Math.round((o.votes / total) * 100) : 0;
+          var isFinal = poll.final_option_id && o.option_id === poll.final_option_id;
+          var isTopAvailability = q.question_type === "availability" && !isFinal && maxVotes > 0 && o.votes === maxVotes;
+          var rowWrap = el("div", "bar-wrap" + (isFinal ? " final" : "") + (isTopAvailability ? " top" : ""));
+          rowWrap.innerHTML =
+            '<div class="bar-label"><span>' + esc(optionLabelFull(o, poll.timezone)) + (isTopAvailability ? '<span class="most-avail">most available</span>' : "") + '</span><span class="pct">' + o.votes + " (" + pct + "%)</span></div>" +
+            '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>';
+          qWrap.appendChild(rowWrap);
+          if (o.available_respondents && o.available_respondents.length) {
+            qWrap.appendChild(el("div", "respondents-line", "Available: " + o.available_respondents.join(", ")));
+          }
+        });
+        if (total > 0) qWrap.appendChild(el("div", "respondents-line", total + " respondent" + (total === 1 ? "" : "s") + " answered this question"));
+      }
+      card.appendChild(qWrap);
+    });
+    container.appendChild(card);
+  }
+
+  // ============================================================
+  // ADMIN: auth screens
+  // ============================================================
+  function renderAdminAuth(container) {
+    subtitle.textContent = "Admin sign-in";
+    var card = el("div", "card");
+    var tabbar = el("div", "tabbar");
+    var mode = "signin";
+    var signinTab = el("button", "tab active", "Sign in");
+    var signupTab = el("button", "tab", "Create account");
+    tabbar.appendChild(signinTab); tabbar.appendChild(signupTab);
+    card.appendChild(tabbar);
+
+    var emailLabel = el("label", null, "Email");
+    card.appendChild(emailLabel);
+    var emailInput = document.createElement("input"); emailInput.type = "email"; emailInput.autocomplete = "username";
+    card.appendChild(emailInput);
+    card.appendChild(el("label", null, "Password"));
+    var pwInput = document.createElement("input"); pwInput.type = "password"; pwInput.autocomplete = "current-password";
+    card.appendChild(pwInput);
+
+    var msgHolder = el("div", null); msgHolder.style.marginTop = "10px";
+    card.appendChild(msgHolder);
+
+    var btn = el("button", "btn", "Sign in"); btn.style.marginTop = "14px";
+    card.appendChild(btn);
+
+    function setMode(m) {
+      mode = m;
+      signinTab.className = "tab" + (m === "signin" ? " active" : "");
+      signupTab.className = "tab" + (m === "signup" ? " active" : "");
+      btn.textContent = m === "signin" ? "Sign in" : "Create account";
+      pwInput.autocomplete = m === "signin" ? "current-password" : "new-password";
+      msgHolder.innerHTML = "";
+    }
+    signinTab.addEventListener("click", function () { setMode("signin"); });
+    signupTab.addEventListener("click", function () { setMode("signup"); });
+
+    btn.addEventListener("click", async function () {
+      msgHolder.innerHTML = "";
+      var email = emailInput.value.trim(), pw = pwInput.value;
+      if (!email || !pw) { msgHolder.appendChild(msgBox("error", "Enter an email and password.")); return; }
+      btn.disabled = true;
+      try {
+        if (mode === "signin") {
+          var r = await sb.auth.signInWithPassword({ email: email, password: pw });
+          if (r.error) throw r.error;
+          state.session = r.data.session;
+          await refreshAdminContext();
+          // Do NOT force-navigate to #/admin here. If the admin was
+          // bounced to sign-in mid-task (e.g. re-authenticating after a
+          // session interruption while editing a poll), state.route is
+          // already pointing at wherever they were trying to go
+          // (adminNew/adminEdit/etc); just re-render in place so any
+          // pending draft-recovery flow on that route can pick up.
+          render();
+        } else {
+          var r2 = await sb.auth.signUp({
+            email: email,
+            password: pw,
+            options: { emailRedirectTo: location.origin + location.pathname + "#/admin" }
+          });
+          if (r2.error) throw r2.error;
+          if (r2.data.session) {
+            state.session = r2.data.session;
+            await refreshAdminContext();
+            render();
+          } else {
+            msgHolder.innerHTML = "";
+            msgHolder.appendChild(msgBox("success", "Account created. Check your email to confirm it, then sign in."));
+          }
+        }
+      } catch (err) {
+        msgHolder.innerHTML = "";
+        msgHolder.appendChild(msgBox("error", err.message || String(err)));
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    container.appendChild(card);
+  }
+
+  // No general-purpose "claim admin" affordance is shown here — that was
+  // the race-condition risk. Any signed-in user who lands here silently
+  // gets ONE attempt at bootstrap_platform_owner(), which the database
+  // (migration 0008) now only ever allows to succeed for one specific,
+  // pre-authorized account. Everyone else — which, after that first real
+  // owner exists, is everyone — just sees a neutral message and no button.
+  async function renderAdminBootstrap(container) {
+    subtitle.textContent = "Admin access";
+    var card = el("div", "card");
+    card.appendChild(el("h3", null, "You don't have admin access yet"));
+    var msgHolder = el("div", null); msgHolder.style.marginTop = "10px";
+    card.appendChild(msgHolder);
+    container.appendChild(card);
+
+    if (!state.bootstrapAttempted) {
+      state.bootstrapAttempted = true;
+      try {
+        var r = await sb.rpc("bootstrap_platform_owner");
+        if (!r.error) {
+          await refreshAdminContext();
+          render();
+          return;
+        }
+      } catch (e) { /* not authorized / already bootstrapped — fall through */ }
+    }
+    msgHolder.innerHTML = "";
+    msgHolder.appendChild(msgBox("info", "Ask an existing administrator to add your account to an organization."));
+  }
+
+  // ============================================================
+  // ADMIN: dashboard
+  // ============================================================
+  async function renderAdmin(container) {
+    subtitle.textContent = "Admin panel";
+
+    if (state.isPlatformOwner) {
+      var addOrgCard = el("div", "card");
+      addOrgCard.appendChild(el("label", null, "Create an organization"));
+      var orgForm = document.createElement("form");
+      orgForm.style.display = "flex"; orgForm.style.gap = "8px";
+      var orgInput = document.createElement("input"); orgInput.type = "text"; orgInput.placeholder = "e.g. TCABC";
+      orgForm.appendChild(orgInput);
+      var orgBtn = el("button", "btn", "Add"); orgBtn.type = "submit"; orgBtn.style.width = "auto";
+      orgForm.appendChild(orgBtn);
+      var orgMsg = el("div", null);
+      orgForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        if (!orgInput.value.trim()) return;
+        try {
+          var r = await sb.rpc("create_organization", { p_name: orgInput.value.trim() });
+          if (r.error) throw r.error;
+          orgInput.value = "";
+          await loadOrgs();
+          render();
+        } catch (err) {
+          orgMsg.innerHTML = ""; orgMsg.appendChild(msgBox("error", err.message || String(err)));
+        }
+      });
+      addOrgCard.appendChild(orgForm); addOrgCard.appendChild(orgMsg);
+      container.appendChild(addOrgCard);
+    }
+
+    var visibleOrgs = state.orgs.filter(function (o) { return isAdminOfOrg(o.id); });
+    if (!state.orgId || !isAdminOfOrg(state.orgId)) {
+      state.orgId = visibleOrgs.length ? visibleOrgs[0].id : null;
+    }
+    if (!visibleOrgs.length) {
+      container.appendChild(el("div", "empty", "You aren't an admin on any organization yet."));
+      return;
+    }
+
+    var switcherWrap = el("div", "org-row");
+    var select = document.createElement("select");
+    visibleOrgs.forEach(function (o) {
+      var opt = el("option", null, o.name); opt.value = o.id;
+      if (o.id === state.orgId) opt.selected = true;
+      select.appendChild(opt);
+    });
+    select.addEventListener("change", function () { state.orgId = select.value; localStorage.setItem("pc_org_id", state.orgId); render(); });
+    switcherWrap.appendChild(select);
+    container.appendChild(switcherWrap);
+
+    var curOrg = state.orgs.find(function (o) { return o.id === state.orgId; });
+    var tzCard = el("div", "card");
+    tzCard.appendChild(el("label", null, "Organization default timezone"));
+    tzCard.appendChild(el("div", "hint", "New polls for this organization start with this timezone. Each poll can still override it individually."));
+    var orgTzSelect = document.createElement("select");
+    var curTz = (curOrg && curOrg.default_timezone) || "America/Chicago";
+    TZ_LIST.forEach(function (pair) { var o = el("option", null, pair[1]); o.value = pair[0]; if (pair[0] === curTz) o.selected = true; orgTzSelect.appendChild(o); });
+    tzCard.appendChild(orgTzSelect);
+    var tzSaveBtn = el("button", "btn secondary", "Save timezone"); tzSaveBtn.type = "button"; tzSaveBtn.style.marginTop = "8px";
+    var tzMsg = el("div", null); tzMsg.style.marginTop = "6px";
+    tzSaveBtn.addEventListener("click", async function () {
+      tzSaveBtn.disabled = true;
+      try {
+        var r = await sb.rpc("update_org_timezone", { p_org_id: state.orgId, p_timezone: orgTzSelect.value });
+        if (r.error) throw r.error;
+        if (curOrg) curOrg.default_timezone = orgTzSelect.value;
+        tzMsg.innerHTML = ""; tzMsg.appendChild(msgBox("success", "Saved."));
+      } catch (err) { tzMsg.innerHTML = ""; tzMsg.appendChild(msgBox("error", err.message || String(err))); }
+      finally { tzSaveBtn.disabled = false; }
+    });
+    tzCard.appendChild(tzSaveBtn); tzCard.appendChild(tzMsg);
+    container.appendChild(tzCard);
+
+    var newPollBtn = el("button", "btn", "+ New poll for " + orgName(state.orgId));
+    newPollBtn.style.marginBottom = "14px";
+    newPollBtn.addEventListener("click", function () { navigate("#/admin/new"); });
+    container.appendChild(newPollBtn);
+
+    var tabbar = el("div", "tabbar");
+    ["draft", "scheduled", "open", "closed", "archived"].forEach(function (t) {
+      var b = el("button", "tab" + (state.adminTab === t ? " active" : ""), statusLabel(t));
+      b.addEventListener("click", function () { state.adminTab = t; render(); });
+      tabbar.appendChild(b);
+    });
+    container.appendChild(tabbar);
+
+    var listWrap = el("div", null); listWrap.appendChild(el("div", "empty", "Loading…"));
+    container.appendChild(listWrap);
+
+    var res = await sb.from("polls").select("*").eq("org_id", state.orgId).eq("status", state.adminTab).order("created_at", { ascending: false });
+    listWrap.innerHTML = "";
+    if (res.error) { listWrap.appendChild(msgBox("error", res.error.message)); return; }
+    var polls = res.data || [];
+    if (!polls.length) { listWrap.appendChild(el("div", "empty", "No " + statusLabel(state.adminTab).toLowerCase() + " polls.")); return; }
+    polls.forEach(function (p) { listWrap.appendChild(adminPollCard(p)); });
+  }
+
+  function adminPollCard(p) {
+    var card = el("div", "card"); card.style.cursor = "pointer";
+    var badges = el("div", "meta-row");
+    badges.innerHTML =
+      '<span class="badge ' + p.poll_type + '">' + esc(typeLabel(p.poll_type)) + "</span>" +
+      '<span class="badge ' + p.status + '">' + esc(statusLabel(p.status)) + "</span>" +
+      (p.anonymous ? '<span class="badge secret">Secret ballot</span>' : "");
+    card.appendChild(badges);
+    card.appendChild(el("h3", null, p.title));
+    card.addEventListener("click", function (e) {
+      if (e.target.closest("button")) return;
+      navigate("#/admin/poll/" + p.id);
+    });
+    return card;
+  }
+
+  // ============================================================
+  // ADMIN: poll manage (monitor, lifecycle, results, tokens, csv)
+  // ============================================================
+  async function renderAdminPoll(container, pollId) {
+    var back = el("a", "back", "‹ All polls");
+    back.addEventListener("click", function () { navigate("#/admin"); });
+    container.appendChild(back);
+
+    var pollRes = await sb.from("polls").select("*").eq("id", pollId).single();
+    if (pollRes.error) { container.appendChild(msgBox("error", "Couldn't load poll.")); return; }
+    var poll = pollRes.data;
+    subtitle.textContent = poll.title;
+
+    var head = el("div", "card");
+    var badges = el("div", "meta-row");
+    badges.innerHTML =
+      '<span class="badge ' + poll.poll_type + '">' + esc(typeLabel(poll.poll_type)) + "</span>" +
+      '<span class="badge ' + poll.status + '">' + esc(statusLabel(poll.status)) + "</span>" +
+      (poll.anonymous ? '<span class="badge secret">Secret ballot</span>' : "");
+    head.appendChild(badges);
+    head.appendChild(el("h3", null, poll.title));
+    if (poll.description) head.appendChild(el("p", "desc", poll.description));
+    var whenBits = [];
+    if (poll.open_at) whenBits.push("Opens " + fmtDateTime(poll.open_at, poll.timezone));
+    if (poll.close_at) whenBits.push((poll.status === "closed" ? "Closed " : "Closes ") + fmtDateTime(poll.close_at, poll.timezone));
+    if (whenBits.length) head.appendChild(el("div", "muted", whenBits.join(" · ")));
+
+    if (poll.status === "open" || poll.status === "closed") {
+      var linkBox = el("div", "linkbox");
+      var urlSpan = el("span", null, publicPollUrl(poll.id));
+      urlSpan.style.flex = "1";
+      linkBox.appendChild(urlSpan);
+      var copyBtn = el("button", "btn secondary", "Copy link");
+      copyBtn.type = "button"; copyBtn.style.width = "auto"; copyBtn.style.padding = "6px 10px"; copyBtn.style.fontSize = "12px";
+      copyBtn.addEventListener("click", function () {
+        navigator.clipboard.writeText(publicPollUrl(poll.id)).then(function () {
+          copyBtn.textContent = "Copied!"; setTimeout(function () { copyBtn.textContent = "Copy link"; }, 1500);
+        });
+      });
+      linkBox.appendChild(copyBtn);
+      head.appendChild(linkBox);
+    }
+    container.appendChild(head);
+
+    // participation monitor
+    var monRes = await sb.rpc("get_poll_admin_monitor", { p_poll_id: poll.id });
+    if (!monRes.error && monRes.data) {
+      var mon = monRes.data;
+      var statCard = el("div", "card");
+      var grid = el("div", "stat-grid");
+      if (mon.mode === "election_turnout") {
+        grid.appendChild(statTile(mon.eligible_count, "Eligible voters"));
+        grid.appendChild(statTile(mon.cast_count, "Ballots cast"));
+        grid.appendChild(statTile(mon.eligible_count ? Math.round((mon.cast_count / mon.eligible_count) * 100) + "%" : "—", "Turnout"));
+      } else {
+        grid.appendChild(statTile(mon.response_count, "Responses"));
+      }
+      statCard.appendChild(grid);
+      container.appendChild(statCard);
+    }
+
+    // lifecycle actions
+    var actionsCard = el("div", "card");
+    actionsCard.appendChild(el("label", null, "Manage"));
+    var btnRow = el("div", "btn-row");
+    var actionMsg = el("div", null);
+
+    function lifecycleBtn(label, cls, fn) {
+      var b = el("button", "btn " + cls, label);
+      b.type = "button";
+      b.addEventListener("click", async function () {
+        actionMsg.innerHTML = "";
+        b.disabled = true;
+        try { await fn(); await reload(); }
+        catch (err) { actionMsg.innerHTML = ""; actionMsg.appendChild(msgBox("error", err.message || String(err))); b.disabled = false; }
+      });
+      return b;
+    }
+    function reload() { navigate("#/admin/poll/" + poll.id); location.reload(); }
+
+    if (poll.status === "draft") {
+      btnRow.appendChild(lifecycleBtn("Edit", "secondary", async function () { navigate("#/admin/edit/" + poll.id); }));
+      btnRow.appendChild(lifecycleBtn("Publish now", "", async function () {
+        var r = await sb.rpc("publish_poll", { p_poll_id: poll.id }); if (r.error) throw r.error;
+      }));
+    }
+    if (poll.status === "scheduled") {
+      btnRow.appendChild(lifecycleBtn("Open now", "", async function () {
+        var r = await sb.rpc("publish_poll", { p_poll_id: poll.id }); if (r.error) throw r.error;
+      }));
+    }
+    if (poll.status === "open") {
+      btnRow.appendChild(lifecycleBtn("Close poll", "secondary", async function () {
+        var r = await sb.rpc("close_poll", { p_poll_id: poll.id }); if (r.error) throw r.error;
+      }));
+    }
+    if (poll.status === "closed" && poll.poll_type !== "election") {
+      btnRow.appendChild(lifecycleBtn("Reopen", "secondary", async function () {
+        var r = await sb.rpc("reopen_poll", { p_poll_id: poll.id }); if (r.error) throw r.error;
+      }));
+    }
+    if (poll.status === "closed" || poll.status === "open") {
+      btnRow.appendChild(lifecycleBtn("Archive", "secondary", async function () {
+        var r = await sb.rpc("archive_poll", { p_poll_id: poll.id }); if (r.error) throw r.error;
+      }));
+    }
+    if (poll.results_visibility === "manual" && !poll.results_released_at) {
+      btnRow.appendChild(lifecycleBtn("Release results now", "", async function () {
+        var r = await sb.rpc("release_results", { p_poll_id: poll.id }); if (r.error) throw r.error;
+      }));
+    }
+    btnRow.appendChild(lifecycleBtn("Duplicate as new draft", "secondary", async function () {
+      var r = await sb.rpc("duplicate_poll", { p_poll_id: poll.id, p_new_title: poll.title + " (copy)" });
+      if (r.error) throw r.error;
+    }));
+
+    actionsCard.appendChild(btnRow);
+    actionsCard.appendChild(actionMsg);
+    container.appendChild(actionsCard);
+
+    // election tokens
+    if (poll.poll_type === "election" || poll.access_mode === "token") {
+      container.appendChild(await tokenGeneratorCard(poll));
+    }
+
+    // results (admin view — same visibility rules as everyone, plus admin_only)
+    var resultsCard = el("div", null);
+    await appendResults(resultsCard, poll, null);
+    container.appendChild(resultsCard);
+
+    // meeting: set final time
+    if (poll.poll_type === "meeting") {
+      var qRes = await sb.from("questions").select("id, options(id,label,slot_start,slot_end,order_index)").eq("poll_id", poll.id).limit(1).single();
+      if (!qRes.error && qRes.data && qRes.data.options && qRes.data.options.length) {
+        var finalCard = el("div", "card");
+        finalCard.appendChild(el("label", null, "Set final meeting time"));
+        var finalSelect = document.createElement("select");
+        var noneOpt = el("option", null, "— Not selected —"); noneOpt.value = "";
+        finalSelect.appendChild(noneOpt);
+        qRes.data.options.slice().sort(function (a, b) { return a.order_index - b.order_index; }).forEach(function (o) {
+          var opt = el("option", null, optionLabelFull(o, poll.timezone)); opt.value = o.id;
+          if (poll.final_option_id === o.id) opt.selected = true;
+          finalSelect.appendChild(opt);
+        });
+        finalCard.appendChild(finalSelect);
+        var finalBtn = el("button", "btn", "Save final time"); finalBtn.style.marginTop = "10px"; finalBtn.type = "button";
+        var finalMsg = el("div", null);
+        finalBtn.addEventListener("click", async function () {
+          try {
+            var r = await sb.rpc("set_final_option", { p_poll_id: poll.id, p_option_id: finalSelect.value || null });
+            if (r.error) throw r.error;
+            finalMsg.innerHTML = ""; finalMsg.appendChild(msgBox("success", "Saved."));
+          } catch (err) { finalMsg.innerHTML = ""; finalMsg.appendChild(msgBox("error", err.message)); }
+        });
+        finalCard.appendChild(finalBtn); finalCard.appendChild(finalMsg);
+        container.appendChild(finalCard);
+      }
+    }
+
+    // CSV export
+    var csvCard = el("div", "card");
+    var csvBtn = el("button", "btn secondary", "Export results to CSV"); csvBtn.type = "button";
+    csvBtn.addEventListener("click", async function () {
+      var r = await sb.rpc("get_poll_results", { p_poll_id: poll.id });
+      if (r.error || !r.data.visible) { alert("Results aren't visible yet, so there's nothing to export."); return; }
+      var rows = [["Question", "Option", "Votes", "Percent", "Respondents answering"]];
+      r.data.questions.forEach(function (q) {
+        var total = q.respondents_answering || 0;
+        if (q.question_type === "text") {
+          (q.text_answers || []).forEach(function (t) { rows.push([q.prompt, t.respondent || "", t.text, "", ""]); });
+        } else if (q.question_type === "rating" && q.rating) {
+          (q.rating.distribution || []).forEach(function (d) {
+            var pct = q.rating.count > 0 ? Math.round((d.count / q.rating.count) * 100) : 0;
+            rows.push([q.prompt, "Rating " + d.value, d.count, pct + "%", q.rating.count]);
+          });
+        } else {
+          (q.options || []).forEach(function (o) {
+            var pct = total > 0 ? Math.round((o.votes / total) * 100) : 0;
+            rows.push([q.prompt, optionLabelFull(o, poll.timezone), o.votes, pct + "%", total]);
+          });
+        }
+      });
+      downloadCSV(poll.title.replace(/[^a-z0-9]+/gi, "_") + "_results.csv", rows);
+    });
+    csvCard.appendChild(csvBtn);
+    container.appendChild(csvCard);
+  }
+
+  function statTile(n, label) {
+    var s = el("div", "stat");
+    s.appendChild(el("div", "n", String(n)));
+    s.appendChild(el("div", "l", label));
+    return s;
+  }
+
+  async function tokenGeneratorCard(poll) {
+    var card = el("div", "card");
+    card.appendChild(el("label", null, "Voting credentials"));
+    card.appendChild(el("p", "desc", "Generate one single-use code per eligible voter. Codes are shown once, right here — they are hashed before storage and can never be displayed again, so export or copy them immediately."));
+    var ta = document.createElement("textarea");
+    ta.placeholder = "One name or email per line — used only as your own roster label, never stored on any ballot";
+    card.appendChild(ta);
+    var genBtn = el("button", "btn", "Generate codes"); genBtn.type = "button"; genBtn.style.marginTop = "10px";
+    var out = el("div", null); out.style.marginTop = "10px";
+    genBtn.addEventListener("click", async function () {
+      var labels = ta.value.split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
+      if (!labels.length) return;
+      genBtn.disabled = true;
+      try {
+        var r = await sb.rpc("generate_election_tokens", { p_poll_id: poll.id, p_labels: labels });
+        if (r.error) throw r.error;
+        out.innerHTML = "";
+        out.appendChild(msgBox("warn", "Save these now — they cannot be shown again."));
+        (r.data || []).forEach(function (row) {
+          out.appendChild(el("code", "tok", row.label + ":  " + row.token));
+        });
+        var csvBtn2 = el("button", "btn secondary", "Download codes as CSV"); csvBtn2.type = "button"; csvBtn2.style.marginTop = "8px";
+        csvBtn2.addEventListener("click", function () {
+          downloadCSV(poll.title.replace(/[^a-z0-9]+/gi, "_") + "_voting_codes.csv",
+            [["Label", "Code"]].concat((r.data || []).map(function (row) { return [row.label, row.token]; })));
+        });
+        out.appendChild(csvBtn2);
+        ta.value = "";
+      } catch (err) {
+        out.innerHTML = ""; out.appendChild(msgBox("error", err.message || String(err)));
+      } finally { genBtn.disabled = false; }
+    });
+    card.appendChild(genBtn); card.appendChild(out);
+
+    var rosterRes = await sb.from("voter_eligibility").select("label,used").eq("poll_id", poll.id).order("created_at");
+    if (!rosterRes.error && rosterRes.data && rosterRes.data.length) {
+      var rosterWrap = el("div", null); rosterWrap.style.marginTop = "12px";
+      rosterWrap.appendChild(el("div", "muted", "Issued so far:"));
+      rosterRes.data.forEach(function (v) {
+        var line = el("div", "muted");
+        line.style.padding = "2px 0";
+        line.textContent = (v.label || "(unlabeled)") + " — " + (v.used ? "voted" : "not yet voted");
+        rosterWrap.appendChild(line);
+      });
+      card.appendChild(rosterWrap);
+    }
+    return card;
+  }
+
+  // ============================================================
+  // ADMIN: create / edit poll
+  // ============================================================
+  function newQuestionDraft(type) {
+    return {
+      key: uid(), question_type: type, prompt: "", required: true,
+      max_selections: null, allow_write_in: false, allow_abstain: false,
+      rating_min: 1, rating_max: 5,
+      options: [],
+    };
+  }
+  function newOptionDraft(label) { return { key: uid(), label: label || "", slot_start: "", slot_end: "", is_abstain: false, is_write_in: false }; }
+
+  async function renderPollForm(container, existingPollId) {
+    var isEdit = !!existingPollId;
+    subtitle.textContent = isEdit ? "Edit draft poll" : "New poll";
+    var back = el("a", "back", "‹ Cancel");
+    back.addEventListener("click", function () { navigate(isEdit ? "#/admin/poll/" + existingPollId : "#/admin"); });
+    container.appendChild(back);
+
+    // draft.open_at / draft.close_at / any option's slot_start / slot_end
+    // always hold real UTC ISO instants (or null/""), never raw wall-clock
+    // strings — conversion to/from the wall-clock shown in an <input> only
+    // ever happens at the render/read boundary, in draft.timezone.
+    var draft = {
+      poll_type: "meeting",
+      title: "", description: "",
+      access_mode: "device",
+      anonymous: false,
+      allow_change_vote: false,
+      results_visibility: "after_close",
+      show_respondent_identities: false,
+      timezone: null,
+      open_at: null, close_at: null,
+      questions: [],
+    };
+
+    if (isEdit) {
+      var pRes = await sb.from("polls").select("*").eq("id", existingPollId).single();
+      if (pRes.error) { container.appendChild(msgBox("error", "Couldn't load poll.")); return; }
+      if (pRes.data.status !== "draft") { container.appendChild(msgBox("error", "Only draft polls can be edited. Duplicate this poll to make changes.")); return; }
+      Object.assign(draft, pRes.data);
+      var qRes = await sb.from("questions").select("*, options(*)").eq("poll_id", existingPollId).order("order_index");
+      draft.questions = (qRes.data || []).sort(function (a, b) { return a.order_index - b.order_index; }).map(function (q) {
+        var qd = newQuestionDraft(q.question_type);
+        Object.assign(qd, { prompt: q.prompt, required: q.required, max_selections: q.max_selections, allow_write_in: q.allow_write_in, allow_abstain: q.allow_abstain, rating_min: q.rating_min || 1, rating_max: q.rating_max || 5 });
+        qd.options = (q.options || []).sort(function (a, b) { return a.order_index - b.order_index; }).map(function (o) {
+          var od = newOptionDraft(o.label);
+          od.slot_start = o.slot_start || ""; od.slot_end = o.slot_end || "";
+          od.is_abstain = o.is_abstain; od.is_write_in = o.is_write_in;
+          return od;
+        });
+        return qd;
+      });
+    }
+
+    // Local draft recovery: scoped to this admin + this org + this
+    // specific poll (existingPollId when editing, the constant "new" for
+    // the new-poll composer -- there is only ever one in-progress "new
+    // poll" draft per org at a time). If a recovery copy exists, we do
+    // NOT silently merge it in -- the admin gets to choose, since the
+    // server-loaded draft (for an edit) or the blank defaults (for a new
+    // poll) are also valid starting points and merging automatically
+    // could clobber either.
+    var pollKey = isEdit ? existingPollId : "new";
+    var adminId = state.session && state.session.user && state.session.user.id;
+    var recovery = loadDraftRecovery(adminId, state.orgId, pollKey);
+
+    var card = el("div", "card");
+
+    if (recovery && recovery.draft) {
+      var recBanner = el("div", "msg warn", "We found unsaved poll-builder work saved locally from " + new Date(recovery.savedAt).toLocaleString() + ". Restore it, or discard it and start from " + (isEdit ? "the saved draft" : "scratch") + ".");
+      card.appendChild(recBanner);
+      var recBtnRow = el("div", "btn-row");
+      var restoreBtn = el("button", "btn", "Restore draft"); restoreBtn.type = "button";
+      var discardBtn = el("button", "btn secondary", "Discard"); discardBtn.type = "button";
+      recBtnRow.appendChild(restoreBtn); recBtnRow.appendChild(discardBtn);
+      card.appendChild(recBtnRow);
+      container.appendChild(card);
+      restoreBtn.addEventListener("click", function () {
+        Object.assign(draft, recovery.draft);
+        card.innerHTML = "";
+        buildFormBody();
+      });
+      discardBtn.addEventListener("click", function () {
+        clearDraftRecovery(adminId, state.orgId, pollKey);
+        card.innerHTML = "";
+        buildFormBody();
+      });
+      return;
+    }
+
+    container.appendChild(card);
+    buildFormBody();
+
+    // Everything below builds the actual poll-builder form from the
+    // current `draft` object (whichever way it got populated above) and
+    // is deferred into its own function so it can be called either
+    // immediately or only after the admin resolves the restore/discard
+    // choice above.
+    function buildFormBody() {
+    card.appendChild(el("div", "muted", "Organization: " + orgName(state.orgId)));
+    var form = document.createElement("form");
+
+    // type selector
+    form.appendChild(el("label", null, "Poll type"));
+    var typeChoice = el("div", "type-choice");
+    var TYPES = [
+      ["meeting", "Meeting availability", "Find the best time"],
+      ["choice", "Choice / decision", "Vote on options"],
+      ["election", "Election", "Secret ballot"],
+      ["survey", "Survey / feedback", "Multiple questions"],
+    ];
+    var typeInputs = [];
+    TYPES.forEach(function (t) {
+      var lbl = document.createElement("label");
+      var inp = document.createElement("input"); inp.type = "radio"; inp.name = "ptype"; inp.value = t[0];
+      if (draft.poll_type === t[0]) inp.checked = true;
+      lbl.appendChild(inp);
+      var span = document.createElement("span"); span.textContent = t[1];
+      var small = document.createElement("span"); small.className = "tdesc"; small.textContent = t[2];
+      span.appendChild(small);
+      lbl.appendChild(span);
+      typeChoice.appendChild(lbl);
+      typeInputs.push(inp);
+      if (isEdit) inp.disabled = true;
+    });
+    form.appendChild(typeChoice);
+
+    form.appendChild(el("label", null, "Title"));
+    var titleInput = document.createElement("input"); titleInput.type = "text"; titleInput.value = draft.title || "";
+    form.appendChild(titleInput);
+
+    form.appendChild(el("label", null, "Description / instructions (optional)"));
+    var descInput = document.createElement("textarea"); descInput.value = draft.description || "";
+    form.appendChild(descInput);
+
+    // questions area — rebuilt whenever type changes
+    var qArea = el("div", null);
+    form.appendChild(qArea);
+
+    // common settings
+    var settingsWrap = el("div", null);
+    form.appendChild(settingsWrap);
+
+    var msgHolder = el("div", null); msgHolder.style.marginTop = "10px";
+    form.appendChild(msgHolder);
+
+    var btnRow = el("div", "btn-row"); btnRow.style.marginTop = "14px";
+    var previewBtn = el("button", "btn secondary", "Preview"); previewBtn.type = "button";
+    var saveDraftBtn = el("button", "btn secondary", "Save as draft"); saveDraftBtn.type = "submit";
+    var savePublishBtn = el("button", "btn", "Save & publish"); savePublishBtn.type = "button";
+    btnRow.appendChild(previewBtn); btnRow.appendChild(saveDraftBtn); btnRow.appendChild(savePublishBtn);
+    form.appendChild(btnRow);
+
+    // preview area (hidden until "Preview" is clicked) — client-side only,
+    // built from the current unsaved draft, no database writes, no admin
+    // controls, just the same respondent-facing fields a real voter would see.
+    var previewWrap = el("div", null); previewWrap.style.display = "none";
+    card.appendChild(form);
+    card.appendChild(previewWrap);
+    // (card is already attached to container by the caller, above.)
+
+    function currentType() { return typeInputs.find(function (i) { return i.checked; }).value; }
+
+    // ------------------------------------------------------------
+    // Local draft-recovery autosave. Debounced so it isn't writing on
+    // every keystroke; the listener lives on the stable `form` element
+    // and relies on input/change event bubbling, so it keeps working
+    // across buildSettings()/buildQuestions() innerHTML rebuilds without
+    // needing to be re-attached. Never fires for a signed-out admin
+    // (adminId is falsy then) since there's no safe per-admin scope to
+    // save under.
+    // ------------------------------------------------------------
+    var draftStatusEl = el("div", "muted", "");
+    draftStatusEl.style.fontSize = "12px";
+    form.insertBefore(draftStatusEl, btnRow);
+    var persistDraftNow = debounce(function () {
+      if (!adminId) return;
+      pullFormIntoDraft();
+      saveDraftRecovery(adminId, state.orgId, pollKey, draft);
+      draftStatusEl.textContent = "Draft saved locally · " + new Date().toLocaleTimeString();
+    }, 800);
+    form.addEventListener("input", persistDraftNow);
+    form.addEventListener("change", persistDraftNow);
+
+    // Pulls every currently-displayed form value back into `draft` — the
+    // single source of truth. Called before ANY rebuild (buildSettings,
+    // buildQuestions) so that removing an option row, changing question
+    // type, etc. never silently discards settings the admin already set;
+    // and called before preview/save so both always act on exactly what's
+    // on screen.
+    function pullFormIntoDraft() {
+      draft.title = titleInput.value.trim();
+      draft.description = descInput.value.trim();
+      draft.poll_type = currentType();
+      if (settingsWrap._read) Object.assign(draft, settingsWrap._read());
+    }
+
+    function buildSettings() {
+      pullFormIntoDraft();
+      settingsWrap.innerHTML = "";
+      var type = currentType();
+      var anonForced = type === "election";
+      var tzAtRender = draft.timezone || currentOrgDefaultTz();
+      draft.timezone = tzAtRender;
+
+      settingsWrap.appendChild(el("label", null, "Who can respond"));
+      var accessSelect = document.createElement("select");
+      var accessOpts = anonForced
+        ? [["token", "Voter codes (secret ballot)"]]
+        : [["link", "Anyone with the link"], ["device", "Anyone with the link — one response per device"], ["identified", "Requires name & email"]];
+      accessOpts.forEach(function (a) { var o = el("option", null, a[1]); o.value = a[0]; accessSelect.appendChild(o); });
+      if (!anonForced) accessSelect.value = draft.access_mode || "link";
+      settingsWrap.appendChild(accessSelect);
+      if (!anonForced) accessSelect.addEventListener("change", buildSettings);
+
+      var secretLine = null, secretCk = null;
+      if (!anonForced && type === "choice") {
+        secretLine = el("div", "checkline");
+        secretCk = document.createElement("input"); secretCk.type = "checkbox"; secretCk.id = "secretCk";
+        secretCk.checked = !!draft.anonymous;
+        secretLine.appendChild(secretCk);
+        var l = el("label", null, "Secret ballot (requires voter codes, hides who voted what)");
+        l.htmlFor = "secretCk"; secretLine.appendChild(l);
+        settingsWrap.appendChild(secretLine);
+        secretCk.addEventListener("change", buildSettings);
+      }
+      if (secretCk && secretCk.checked) { accessSelect.disabled = true; accessSelect.value = "token"; }
+
+      settingsWrap.appendChild(el("label", null, "Timezone"));
+      var tzSelect = document.createElement("select");
+      var tzFound = false;
+      TZ_LIST.forEach(function (pair) { var o = el("option", null, pair[1]); o.value = pair[0]; if (pair[0] === tzAtRender) { o.selected = true; tzFound = true; } tzSelect.appendChild(o); });
+      if (!tzFound) { var extra = el("option", null, tzAtRender); extra.value = tzAtRender; extra.selected = true; tzSelect.appendChild(extra); }
+      settingsWrap.appendChild(tzSelect);
+      settingsWrap.appendChild(el("div", "hint", "Meeting time slots and the open/close times below are shown in this timezone — never the browser's."));
+      tzSelect.addEventListener("change", function () { buildQuestions(); });
+
+      settingsWrap.appendChild(el("label", null, "Opens"));
+      var openInput = document.createElement("input"); openInput.type = "datetime-local"; openInput.value = utcIsoToZonedInputValue(draft.open_at, tzAtRender);
+      settingsWrap.appendChild(openInput);
+      settingsWrap.appendChild(el("label", null, "Closes (optional, but required for elections)"));
+      var closeInput = document.createElement("input"); closeInput.type = "datetime-local"; closeInput.value = utcIsoToZonedInputValue(draft.close_at, tzAtRender);
+      settingsWrap.appendChild(closeInput);
+
+      var changeLine = el("div", "checkline");
+      var changeCk = document.createElement("input"); changeCk.type = "checkbox"; changeCk.id = "changeCk"; changeCk.checked = !!draft.allow_change_vote;
+      changeLine.appendChild(changeCk);
+      var cl = el("label", null, "Allow respondents to change their answer before the poll closes"); cl.htmlFor = "changeCk";
+      changeLine.appendChild(cl);
+      settingsWrap.appendChild(changeLine);
+
+      settingsWrap.appendChild(el("label", null, "Results visibility"));
+      var visSelect = document.createElement("select");
+      var visOpts = [["admin_only", "Hidden — admin only"], ["after_voting", "Visible after you respond"], ["while_open", "Visible while poll is open"], ["after_close", "Visible after poll closes"], ["manual", "Released manually by admin"]];
+      if (type === "election") visOpts = visOpts.filter(function (v) { return v[0] !== "while_open"; });
+      var effAccess = anonForced ? "token" : (secretCk && secretCk.checked ? "token" : accessSelect.value);
+      // "Visible after you respond" needs a real, reusable dedup key to
+      // check server-side — only device mode and identified (email) mode
+      // have one. Plain link access and anonymous/token ballots don't, so
+      // that choice is simply not offered for them (rather than silently
+      // never actually showing anyone results, which is what happened
+      // before).
+      if (effAccess !== "device" && effAccess !== "identified") visOpts = visOpts.filter(function (v) { return v[0] !== "after_voting"; });
+      visOpts.forEach(function (v) { var o = el("option", null, v[1]); o.value = v[0]; visSelect.appendChild(o); });
+      var wantVis = type === "election" ? "after_close" : (draft.results_visibility || "after_close");
+      if (!visOpts.some(function (v) { return v[0] === wantVis; })) wantVis = "after_close";
+      visSelect.value = wantVis;
+      settingsWrap.appendChild(visSelect);
+
+      var idLine = el("div", "checkline");
+      var idCk = document.createElement("input"); idCk.type = "checkbox"; idCk.id = "idCk"; idCk.checked = !!draft.show_respondent_identities;
+      idLine.appendChild(idCk);
+      var il = el("label", null, "Show respondent names/identities alongside results"); il.htmlFor = "idCk";
+      idLine.appendChild(il);
+      settingsWrap.appendChild(idLine);
+
+      // NOTE: anonForced is always a real boolean (type === "election").
+      // secretCk is null for every poll type except "choice", so
+      // `secretCk && secretCk.checked` evaluates to null (not false) when
+      // secretCk is null -- and `false || null` is null in JS, not false.
+      // That null was being sent straight through as p_anonymous to the
+      // save_poll_draft RPC, which violates polls.anonymous's NOT NULL
+      // constraint for every non-election, non-secret-choice poll type
+      // (meeting, survey, plain choice). Wrapping in !!(...) forces a
+      // real boolean here at the source, regardless of which branch of
+      // the || produced the value.
+      var anonLock = !!(anonForced || (secretCk && secretCk.checked));
+      changeCk.disabled = anonLock; if (anonLock) changeCk.checked = false;
+      idCk.disabled = anonLock; if (anonLock) idCk.checked = false;
+
+      settingsWrap._read = function () {
+        var anon = !!(anonForced || (secretCk && secretCk.checked));
+        return {
+          access_mode: anon ? "token" : accessSelect.value,
+          anonymous: anon,
+          timezone: tzSelect.value,
+          open_at: zonedTimeToUtcIso(openInput.value, tzAtRender),
+          close_at: zonedTimeToUtcIso(closeInput.value, tzAtRender),
+          allow_change_vote: changeCk.checked,
+          results_visibility: visSelect.value,
+          show_respondent_identities: idCk.checked,
+        };
+      };
+    }
+
+    function optionEditRow(qd, od, onRemove, isSlot) {
+      var row = el("div", isSlot ? "slot-row" : "option-edit-row");
+      if (isSlot) {
+        var tz = draft.timezone || currentOrgDefaultTz();
+        var s = document.createElement("input"); s.type = "datetime-local"; s.value = utcIsoToZonedInputValue(od.slot_start, tz);
+        s.addEventListener("input", function () { od.slot_start = zonedTimeToUtcIso(s.value, tz); });
+        row.appendChild(s);
+        var span = el("span", "muted", "to");
+        row.appendChild(span);
+        var e2 = document.createElement("input"); e2.type = "datetime-local"; e2.value = utcIsoToZonedInputValue(od.slot_end, tz);
+        e2.addEventListener("input", function () { od.slot_end = zonedTimeToUtcIso(e2.value, tz); });
+        row.appendChild(e2);
+      } else {
+        var t = document.createElement("input"); t.type = "text"; t.placeholder = "Option text"; t.value = od.label || "";
+        t.addEventListener("input", function () { od.label = t.value; });
+        row.appendChild(t);
+      }
+      var rm = el("button", "rm", "×"); rm.type = "button";
+      rm.addEventListener("click", function () { onRemove(); buildQuestions(); });
+      row.appendChild(rm);
+      return row;
+    }
+
+    function questionBlock(qd, onRemoveQ, showTypePicker) {
+      var block = el("div", "qblock");
+      var headRow = el("div", "qblock-head");
+      var pInput = document.createElement("input"); pInput.type = "text"; pInput.placeholder = "Question / prompt";
+      pInput.value = qd.prompt || "";
+      pInput.addEventListener("input", function () { qd.prompt = pInput.value; });
+      headRow.appendChild(pInput);
+      if (onRemoveQ) {
+        var rmq = el("button", "rmq", "×"); rmq.type = "button";
+        rmq.addEventListener("click", function () { onRemoveQ(); buildQuestions(); });
+        headRow.appendChild(rmq);
+      }
+      block.appendChild(headRow);
+
+      if (showTypePicker) {
+        var typeSel = document.createElement("select");
+        [["single_select", "Single choice"], ["multi_select", "Multiple choice"], ["yesno", "Yes / No"], ["rating", "Rating scale"], ["text", "Free response"]].forEach(function (t) {
+          var o = el("option", null, t[1]); o.value = t[0]; typeSel.appendChild(o);
+        });
+        typeSel.value = qd.question_type;
+        typeSel.addEventListener("change", function () { qd.question_type = typeSel.value; buildQuestions(); });
+        block.appendChild(typeSel);
+      }
+
+      var reqLine = el("div", "checkline");
+      var reqCk = document.createElement("input"); reqCk.type = "checkbox"; reqCk.checked = qd.required;
+      reqCk.addEventListener("change", function () { qd.required = reqCk.checked; });
+      reqLine.appendChild(reqCk); reqLine.appendChild(el("label", null, "Required"));
+      block.appendChild(reqLine);
+
+      if (qd.question_type === "single_select" || qd.question_type === "multi_select" || qd.question_type === "election_race") {
+        var maxLabel = el("label", null, "Select up to (blank = unlimited for multi-choice, 1 for single)");
+        block.appendChild(maxLabel);
+        var maxInput = document.createElement("input"); maxInput.type = "number"; maxInput.min = "1";
+        maxInput.value = qd.max_selections || "";
+        maxInput.addEventListener("input", function () { qd.max_selections = maxInput.value ? parseInt(maxInput.value, 10) : null; });
+        block.appendChild(maxInput);
+
+        var wiLine = el("div", "checkline");
+        var wiCk = document.createElement("input"); wiCk.type = "checkbox"; wiCk.checked = qd.allow_write_in;
+        wiCk.addEventListener("change", function () { qd.allow_write_in = wiCk.checked; buildQuestions(); });
+        wiLine.appendChild(wiCk); wiLine.appendChild(el("label", null, "Allow write-in"));
+        block.appendChild(wiLine);
+
+        var abLine = el("div", "checkline");
+        var abCk = document.createElement("input"); abCk.type = "checkbox"; abCk.checked = qd.allow_abstain;
+        abCk.addEventListener("change", function () { qd.allow_abstain = abCk.checked; buildQuestions(); });
+        abLine.appendChild(abCk); abLine.appendChild(el("label", null, "Allow abstain"));
+        block.appendChild(abLine);
+
+        block.appendChild(el("label", null, "Options"));
+        var optWrap = el("div", null);
+        function renderOpts() {
+          optWrap.innerHTML = "";
+          qd.options.filter(function (o) { return !o._auto; }).forEach(function (od) {
+            optWrap.appendChild(optionEditRow(qd, od, function () { qd.options.splice(qd.options.indexOf(od), 1); }, false));
+          });
+        }
+        renderOpts();
+        block.appendChild(optWrap);
+        var addOptBtn = el("button", "btn secondary", "+ Add option"); addOptBtn.type = "button"; addOptBtn.style.marginTop = "4px";
+        addOptBtn.addEventListener("click", function () { qd.options.push(newOptionDraft("")); renderOpts(); });
+        block.appendChild(addOptBtn);
+      } else if (qd.question_type === "availability") {
+        block.appendChild(el("label", null, "Proposed date/time slots"));
+        var slotWrap = el("div", null);
+        function renderSlots() {
+          slotWrap.innerHTML = "";
+          qd.options.forEach(function (od) {
+            slotWrap.appendChild(optionEditRow(qd, od, function () { qd.options.splice(qd.options.indexOf(od), 1); }, true));
+          });
+        }
+        renderSlots();
+        block.appendChild(slotWrap);
+        var addSlotBtn = el("button", "btn secondary", "+ Add time slot"); addSlotBtn.type = "button"; addSlotBtn.style.marginTop = "4px";
+        addSlotBtn.addEventListener("click", function () { qd.options.push(newOptionDraft("")); renderSlots(); });
+        block.appendChild(addSlotBtn);
+      } else if (qd.question_type === "rating") {
+        block.appendChild(el("label", null, "Scale"));
+        var scaleRow = document.createElement("div"); scaleRow.style.display = "flex"; scaleRow.style.gap = "8px";
+        var minI = document.createElement("input"); minI.type = "number"; minI.value = qd.rating_min || 1;
+        minI.addEventListener("input", function () { qd.rating_min = parseInt(minI.value, 10) || 1; });
+        var maxI = document.createElement("input"); maxI.type = "number"; maxI.value = qd.rating_max || 5;
+        maxI.addEventListener("input", function () { qd.rating_max = parseInt(maxI.value, 10) || 5; });
+        scaleRow.appendChild(minI); scaleRow.appendChild(maxI);
+        block.appendChild(scaleRow);
+      }
+      return block;
+    }
+
+    function buildQuestions() {
+      var type = currentType();
+      buildSettings();
+      qArea.innerHTML = "";
+
+      if (type === "meeting") {
+        if (!draft.questions.length || draft.questions[0].question_type !== "availability") {
+          draft.questions = [newQuestionDraft("availability")];
+          draft.questions[0].prompt = "When can you attend?";
+          draft.questions[0].options = [newOptionDraft(""), newOptionDraft("")];
+        }
+        qArea.appendChild(questionBlock(draft.questions[0], null, false));
+      } else if (type === "choice") {
+        if (!draft.questions.length || (draft.questions[0].question_type !== "single_select" && draft.questions[0].question_type !== "multi_select")) {
+          draft.questions = [newQuestionDraft("single_select")];
+          draft.questions[0].prompt = draft.title || "";
+          draft.questions[0].options = [newOptionDraft(""), newOptionDraft("")];
+        }
+        var mainQ = draft.questions[0];
+        var selWrap = el("div", null);
+        selWrap.appendChild(el("label", null, "Select up to (1 = single choice)"));
+        var selInput = document.createElement("input"); selInput.type = "number"; selInput.min = "1";
+        selInput.value = mainQ.max_selections || 1;
+        selInput.addEventListener("input", function () {
+          var n = parseInt(selInput.value, 10) || 1;
+          mainQ.max_selections = n > 1 ? n : null;
+          mainQ.question_type = n > 1 ? "multi_select" : "single_select";
+        });
+        selWrap.appendChild(selInput);
+        qArea.appendChild(selWrap);
+        qArea.appendChild(questionBlock(mainQ, null, false));
+
+        var hasComment = draft.questions.length > 1;
+        var cLine = el("div", "checkline");
+        var cCk = document.createElement("input"); cCk.type = "checkbox"; cCk.checked = hasComment;
+        cCk.addEventListener("change", function () {
+          if (cCk.checked) { var q2 = newQuestionDraft("text"); q2.prompt = "Comments (optional)"; q2.required = false; draft.questions.push(q2); }
+          else { draft.questions = [mainQ]; }
+          buildQuestions();
+        });
+        cLine.appendChild(cCk); cLine.appendChild(el("label", null, "Allow an optional comment"));
+        qArea.appendChild(cLine);
+      } else if (type === "election") {
+        if (!draft.questions.length) {
+          var race = newQuestionDraft("single_select");
+          race.prompt = "";
+          race.options = [newOptionDraft(""), newOptionDraft("")];
+          draft.questions = [race];
+        }
+        draft.questions.forEach(function (q) { if (q.question_type === "text" || q.question_type === "availability" || q.question_type === "rating" || q.question_type === "yesno") q.question_type = "single_select"; });
+        qArea.appendChild(el("label", null, "Races / questions on this ballot"));
+        draft.questions.forEach(function (qd) {
+          qArea.appendChild(questionBlock(qd, draft.questions.length > 1 ? function () { draft.questions.splice(draft.questions.indexOf(qd), 1); } : null, false));
+        });
+        var addRaceBtn = el("button", "btn secondary", "+ Add another race/question"); addRaceBtn.type = "button";
+        addRaceBtn.addEventListener("click", function () {
+          var r = newQuestionDraft("single_select"); r.options = [newOptionDraft(""), newOptionDraft("")];
+          draft.questions.push(r); buildQuestions();
+        });
+        qArea.appendChild(addRaceBtn);
+      } else if (type === "survey") {
+        if (!draft.questions.length) draft.questions = [newQuestionDraft("single_select")];
+        qArea.appendChild(el("label", null, "Questions"));
+        draft.questions.forEach(function (qd) {
+          qArea.appendChild(questionBlock(qd, draft.questions.length > 1 ? function () { draft.questions.splice(draft.questions.indexOf(qd), 1); } : null, true));
+        });
+        var addQBtn = el("button", "btn secondary", "+ Add another question"); addQBtn.type = "button";
+        addQBtn.addEventListener("click", function () { draft.questions.push(newQuestionDraft("single_select")); buildQuestions(); });
+        qArea.appendChild(addQBtn);
+      }
+    }
+
+    typeInputs.forEach(function (inp) { inp.addEventListener("change", buildQuestions); });
+    buildQuestions();
+
+    function validateDraft() {
+      var type = draft.poll_type;
+      if (!draft.title) return "Add a title.";
+      if (type === "election" && !draft.close_at) return "Elections need a close date/time.";
+      var qDrafts = draft.questions;
+      for (var i = 0; i < qDrafts.length; i++) {
+        if (!qDrafts[i].prompt.trim() && type !== "meeting") return "Every question needs a prompt.";
+        if (["single_select", "multi_select"].indexOf(qDrafts[i].question_type) !== -1) {
+          var realOpts = qDrafts[i].options.filter(function (o) { return o.label.trim(); });
+          if (realOpts.length < 2) return "Each choice question needs at least two options.";
+        }
+        if (qDrafts[i].question_type === "availability") {
+          var slots = qDrafts[i].options.filter(function (o) { return o.slot_start; });
+          if (slots.length < 1) return "Add at least one time slot.";
+        }
+      }
+      return null;
+    }
+
+    function optionsPayloadFor(qd) {
+      if (qd.question_type === "availability") {
+        return qd.options.filter(function (o) { return o.slot_start; }).map(function (o) { return { label: null, slot_start: o.slot_start, slot_end: o.slot_end || null }; });
+      }
+      if (qd.question_type === "single_select" || qd.question_type === "multi_select") {
+        return qd.options.filter(function (o) { return o.label && o.label.trim(); }).map(function (o) { return { label: o.label.trim() }; });
+      }
+      return [];
+    }
+
+    function questionsPayload() {
+      return draft.questions.map(function (qd) {
+        return {
+          prompt: (qd.prompt || "").trim() || draft.title,
+          question_type: qd.question_type,
+          max_selections: qd.max_selections,
+          allow_write_in: qd.allow_write_in,
+          allow_abstain: qd.allow_abstain,
+          required: qd.required,
+          rating_min: qd.question_type === "rating" ? qd.rating_min : null,
+          rating_max: qd.question_type === "rating" ? qd.rating_max : null,
+          options: optionsPayloadFor(qd),
+        };
+      });
+    }
+
+    // ------------------------------------------------------------
+    // Preview: renders the current unsaved draft exactly the way a
+    // respondent would see it. Purely client-side — no RPC calls, no
+    // response is ever created, and nothing here is an admin control.
+    // ------------------------------------------------------------
+    function previewOptionsFor(qd) {
+      if (qd.question_type === "yesno") return [{ id: "y", label: "Yes" }, { id: "n", label: "No" }];
+      if (qd.question_type === "availability") {
+        return qd.options.filter(function (o) { return o.slot_start; }).map(function (o) { return { id: o.key, slot_start: o.slot_start, slot_end: o.slot_end }; });
+      }
+      if (qd.question_type === "single_select" || qd.question_type === "multi_select") {
+        var opts = qd.options.filter(function (o) { return o.label && o.label.trim(); }).map(function (o) { return { id: o.key, label: o.label.trim() }; });
+        if (qd.allow_abstain) opts.push({ id: "__abstain_preview", label: "Abstain", is_abstain: true });
+        if (qd.allow_write_in) opts.push({ id: "__writein_preview", label: "Write-in", is_write_in: true });
+        return opts;
+      }
+      return [];
+    }
+    function draftToPublicShape() {
+      return {
+        id: "preview", title: draft.title || "(untitled poll)", description: draft.description,
+        poll_type: draft.poll_type, status: "open", access_mode: draft.access_mode, anonymous: draft.anonymous,
+        timezone: draft.timezone,
+        questions: draft.questions.map(function (qd) {
+          return {
+            id: qd.key, prompt: (qd.prompt || "").trim() || "(untitled question)", question_type: qd.question_type,
+            max_selections: qd.max_selections, allow_write_in: qd.allow_write_in, allow_abstain: qd.allow_abstain,
+            required: qd.required, rating_min: qd.rating_min, rating_max: qd.rating_max,
+            options: previewOptionsFor(qd),
+          };
+        }),
+      };
+    }
+    previewBtn.addEventListener("click", function () {
+      pullFormIntoDraft();
+      var publicShape = draftToPublicShape();
+      previewWrap.innerHTML = "";
+      previewWrap.appendChild(msgBox("warn", "Preview only — this is what a respondent would see. Nothing here is saved or submitted."));
+
+      var pcard = el("div", "card");
+      var badges = el("div", "meta-row");
+      badges.innerHTML =
+        '<span class="badge ' + publicShape.poll_type + '">' + esc(typeLabel(publicShape.poll_type)) + "</span>" +
+        '<span class="badge open">Open</span>' +
+        (publicShape.anonymous ? '<span class="badge secret">Secret ballot</span>' : "");
+      pcard.appendChild(badges);
+      pcard.appendChild(el("h3", null, publicShape.title));
+      if (publicShape.description) pcard.appendChild(el("p", "desc", publicShape.description));
+      previewWrap.appendChild(pcard);
+
+      var respCard = el("div", "card");
+      if (publicShape.anonymous) {
+        respCard.appendChild(el("label", null, "Your voting code"));
+        var ti = document.createElement("input"); ti.type = "text"; ti.disabled = true; ti.placeholder = "(respondents enter their code here)";
+        respCard.appendChild(ti);
+      }
+      if (publicShape.access_mode === "identified") {
+        respCard.appendChild(el("label", null, "Your name"));
+        var ni = document.createElement("input"); ni.type = "text"; ni.disabled = true;
+        respCard.appendChild(ni);
+        respCard.appendChild(el("label", null, "Your email"));
+        var ei = document.createElement("input"); ei.type = "email"; ei.disabled = true;
+        respCard.appendChild(ei);
+      }
+      var dummyGetters = [];
+      publicShape.questions.forEach(function (q) { respCard.appendChild(questionField(q, dummyGetters, draft.timezone)); });
+      previewWrap.appendChild(respCard);
+
+      var previewBtnRow = el("div", "btn-row");
+      var backBtn = el("button", "btn secondary", "‹ Back to edit"); backBtn.type = "button";
+      backBtn.addEventListener("click", function () { previewWrap.style.display = "none"; form.style.display = ""; });
+      var publishFromPreviewBtn = el("button", "btn", "Looks good — Save & publish"); publishFromPreviewBtn.type = "button";
+      publishFromPreviewBtn.addEventListener("click", function () { saveAll(true); });
+      previewBtnRow.appendChild(backBtn); previewBtnRow.appendChild(publishFromPreviewBtn);
+      previewWrap.appendChild(previewBtnRow);
+
+      form.style.display = "none";
+      previewWrap.style.display = "";
+    });
+
+    // ------------------------------------------------------------
+    // Save: the ONLY write path for poll structure is the save_poll_draft
+    // RPC — one server-side transaction that validates admin authorization,
+    // organization scope, and every poll/question/option integrity rule,
+    // and either commits the whole poll or rolls back completely. There is
+    // no direct insert/update/delete against polls/questions/options from
+    // the client (the database no longer grants that to authenticated
+    // users at all — see migration 0007).
+    // ------------------------------------------------------------
+    async function saveAll(alsoPublish) {
+      msgHolder.innerHTML = "";
+      previewWrap.style.display = "none"; form.style.display = "";
+      pullFormIntoDraft();
+      // Capture the latest state to local recovery storage on every save
+      // attempt, before we know whether it will succeed -- if the save
+      // fails (network error, validation error, expired session, etc.)
+      // the local copy must still be there afterwards.
+      if (adminId) saveDraftRecovery(adminId, state.orgId, pollKey, draft);
+      var problem = validateDraft();
+      if (problem) { msgHolder.appendChild(msgBox("error", problem)); return; }
+
+      previewBtn.disabled = true; saveDraftBtn.disabled = true; savePublishBtn.disabled = true;
+      try {
+        var r = await sb.rpc("save_poll_draft", {
+          p_poll_id: existingPollId || null,
+          p_org_id: state.orgId,
+          p_title: draft.title,
+          p_description: draft.description,
+          p_poll_type: draft.poll_type,
+          p_access_mode: draft.access_mode,
+          p_anonymous: draft.anonymous,
+          p_allow_change_vote: draft.allow_change_vote,
+          p_results_visibility: draft.results_visibility,
+          p_show_respondent_identities: draft.show_respondent_identities,
+          p_timezone: draft.timezone,
+          p_open_at: draft.open_at,
+          p_close_at: draft.close_at,
+          p_questions: questionsPayload(),
+        });
+        if (r.error) throw r.error;
+        var pollId = r.data;
+        // save_poll_draft committed successfully -- the local recovery
+        // copy has now done its job and would only be stale/confusing if
+        // left behind, so clear it. (Deliberately done here, before the
+        // publish_poll call below: even if publish fails, the poll
+        // structure itself is safely saved server-side as a draft, so
+        // there is nothing left for the local copy to protect.)
+        if (adminId) clearDraftRecovery(adminId, state.orgId, pollKey);
+        if (alsoPublish) {
+          var pub = await sb.rpc("publish_poll", { p_poll_id: pollId });
+          if (pub.error) throw pub.error;
+        }
+        navigate("#/admin/poll/" + pollId);
+        location.reload();
+      } catch (err) {
+        var status = err && (err.status || err.statusCode);
+        var code = err && err.code;
+        var msg = (err && err.message) || String(err);
+        var isAuthExpiry = status === 401 || code === "PGRST301" || /jwt|invalid or expired/i.test(msg);
+        if (isAuthExpiry) {
+          // A real Supabase Auth session expiration (not the benign
+          // background TOKEN_REFRESHED case handled in onAuthStateChange
+          // above) -- the local draft copy was just saved a moment ago
+          // above and is left untouched. Send the admin back to sign in;
+          // state.route still points at this exact poll form, so once
+          // they're signed in again render() rebuilds this same form and
+          // the restore/discard prompt above offers this draft back.
+          msgHolder.innerHTML = "";
+          msgHolder.appendChild(msgBox("error", "Your sign-in session expired. Your draft is saved locally on this device -- sign in again and you'll be offered the chance to restore it."));
+          try { await sb.auth.signOut(); } catch (e) { /* best-effort -- we're forcing local state below regardless */ }
+          state.session = null;
+          render();
+          return;
+        }
+        msgHolder.innerHTML = ""; msgHolder.appendChild(msgBox("error", friendlyError(err)));
+        previewBtn.disabled = false; saveDraftBtn.disabled = false; savePublishBtn.disabled = false;
+      }
+    }
+
+    form.addEventListener("submit", function (e) { e.preventDefault(); saveAll(false); });
+    savePublishBtn.addEventListener("click", function () { saveAll(true); });
+    } // end buildFormBody()
+  }
+
+  // ============================================================
+  // MAIN RENDER
+  // ============================================================
+  async function render() {
+    updateAdminBtn();
+    app.innerHTML = "";
+    try {
+      if (!state.orgs.length) await loadOrgs();
+    } catch (e) {
+      app.appendChild(msgBox("error", "Could not load organizations: " + (e.message || e)));
+      return;
+    }
+
+    var route = state.route;
+    if (route.view === "pollDetail") {
+      await renderPublicPollDetail(app, route.pollId);
+    } else if (route.view === "admin" || route.view === "adminNew" || route.view === "adminPoll" || route.view === "adminEdit") {
+      if (!state.session) {
+        var sres = await sb.auth.getSession();
+        state.session = sres.data.session;
+        if (state.session) await refreshAdminContext();
+      }
+      if (!state.session) { renderAdminAuth(app); return; }
+      if (!hasAnyAdminRole()) { await renderAdminBootstrap(app); return; }
+      if (route.view === "adminNew") await renderPollForm(app, null);
+      else if (route.view === "adminEdit") await renderPollForm(app, route.pollId);
+      else if (route.view === "adminPoll") await renderAdminPoll(app, route.pollId);
+      else await renderAdmin(app);
+    } else {
+      await renderPublicList(app);
+    }
+  }
+
+  (async function init() {
+    var sres = await sb.auth.getSession();
+    state.session = sres.data.session;
+    if (state.session) await refreshAdminContext();
+    state.route = parseHash();
+    render();
+  })();
+})();
+</script>
+</body>
+</html>

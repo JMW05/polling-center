@@ -1,0 +1,38 @@
+-- ============================================================
+-- RECONSTRUCTION NOTE — this file intentionally contains no SQL.
+--
+-- The live Supabase project's applied migration history (see
+-- `supabase migration list` / the Supabase dashboard) shows two
+-- migrations at this point in the sequence:
+--
+--   20260913212817  voting_functions
+--   20260913212858  results_and_admin_functions
+--
+-- Those were applied directly against the project during early,
+-- fast-moving development, before this repository existed and before
+-- every migration was being saved to disk as its own file. Their
+-- content was never lost, though: everything they defined —
+-- cast_anonymous_ballot, submit_identified_response,
+-- get_poll_results, get_public_poll_detail, list_public_polls,
+-- publish_poll, close_poll, reopen_poll, archive_poll,
+-- release_results, set_final_option, duplicate_poll, add_org_admin,
+-- generate_election_tokens, get_poll_admin_monitor — is present,
+-- current, and version-controlled in `0002_rls_and_functions.sql`,
+-- which was written as one consolidated file covering RLS policies
+-- and every RPC function needed by the frontend at that stage of the
+-- build.
+--
+-- This file is a placeholder so the migration file numbering in this
+-- repository lines up with the project's real applied history (useful
+-- when cross-referencing against `supabase migration list` or the
+-- dashboard), without fabricating a plausible-looking but inaccurate
+-- split of `0002_rls_and_functions.sql` into two files that never
+-- actually existed. If you need the exact historical SQL text of
+-- those two original migrations specifically (as opposed to their
+-- current, still-in-effect definitions), it is not recoverable from
+-- this repository — Supabase does not expose historical migration
+-- bodies once a later migration has redefined the same objects, and
+-- no destructive replay was performed against production just to
+-- manufacture these files (per standing project rules — see
+-- CLAUDE.md).
+-- ============================================================

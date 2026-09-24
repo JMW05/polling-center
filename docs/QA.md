@@ -24,6 +24,7 @@ was, by a human, in a browser, against the deployed site.
 | Restore returns all form fields | pending |
 | Failed save preserves local draft | pending |
 | Successful save clears recovery copy | pending |
+| WWJanaDo favicon shows in the browser tab (and as the iOS home-screen icon) | pending (visual check) |
 | Frontend module extraction (zero behavior change) — full baseline re-run on the branch preview | pending (automated headless parity check vs. the pre-extraction `index.html` against a stubbed backend: identical — not a browser test) |
 
 ## Context on the pending items

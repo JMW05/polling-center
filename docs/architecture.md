@@ -151,6 +151,9 @@ native ES module. Layout follows `docs/phase1-implementation-map.md` §1:
   `export-csv.js`.
 - `css/` — `tokens.css`, `base.css`, `components.css`, `admin.css`,
   `public.css`, loaded in that order.
+- `assets/` — the WWJanaDo logo (`wwjanado-logo.png`, source) and the
+  favicon / Apple touch icons generated from it, linked from
+  `index.html`'s `<head>`.
 - All timezone-sensitive rendering converts between the poll's configured
   timezone and UTC at the render/read boundary — `draft.open_at`,
   `draft.close_at`, and every option's `slot_start`/`slot_end` are always

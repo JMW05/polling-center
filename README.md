@@ -28,9 +28,12 @@ identities are shown alongside results.
 
 ## Architecture
 
-- **Frontend**: a single self-contained `index.html` — no build step, no
-  bundler, no framework dependency beyond the Supabase JS client loaded
-  from a CDN. This is deliberate: the whole app ships as one static file.
+- **Frontend**: plain static files — `index.html` (page shell), `css/`
+  and `js/` (native ES modules loaded with `<script type="module">`). No
+  build step, no bundler, no framework dependency beyond the Supabase JS
+  client loaded from a CDN. This is deliberate: the repository root is
+  served as-is. See `docs/phase1-implementation-map.md` §1 for the module
+  layout.
 - **Backend**: [Supabase](https://supabase.com) — Postgres, Row Level
   Security, and a set of `SECURITY DEFINER` RPC functions that are the
   *only* write path for poll structure and voting. See
@@ -58,12 +61,12 @@ python3 -m http.server 8080
 ```
 
 Any static file server works equally well (`npx serve`, VS Code's Live
-Server, etc.) — the only requirement is serving `index.html` over HTTP
-(not `file://`), since the Supabase JS client and the page's own
+Server, etc.) — the only requirement is serving the repository root over HTTP
+(not `file://`), since browsers refuse to load ES modules from `file://`, and the Supabase JS client and the page's own
 `fetch`/`hashchange` routing expect a real origin.
 
 The frontend talks directly to the existing Supabase project (URL and
-anon/publishable key are embedded in `index.html` — the anon key is
+anon/publishable key are embedded in `js/supabase-client.js` — the anon key is
 designed to be public and is protected by Row Level Security, so this is
 expected and safe). There is no local/mocked backend; testing against the
 real Supabase project's real RLS policies and RPCs is the point — see
@@ -73,7 +76,7 @@ browser verification.
 To sanity-check the frontend's JavaScript syntax before committing:
 
 ```bash
-node --check <(sed -n '/<script>/,/<\/script>/p' index.html | sed '1d;$d')
+for f in $(find js -name '*.js'); do node --input-type=module --check < "$f" || echo "FAILED: $f"; done
 ```
 
 ## Docs

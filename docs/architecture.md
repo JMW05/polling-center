@@ -2,8 +2,9 @@
 
 ## Overview
 
-Polling Center is a single static HTML/JS frontend (`index.html`, no
-build step) talking directly to Supabase (Postgres + Auth + PostgREST)
+Polling Center is a static HTML/CSS/JS frontend (`index.html` plus
+native ES modules under `js/` and stylesheets under `css/`, no build
+step) talking directly to Supabase (Postgres + Auth + PostgREST)
 over the Supabase JS client, using only the public anon/publishable key.
 There is no separate backend server — every rule that matters (who can
 read what, who can write what, how anonymity is preserved) is enforced
@@ -122,18 +123,34 @@ This is the part that must never be weakened to fix a frontend bug (see
   every call — results are computed and returned only when that rule
   currently permits it, never cached or exposed ahead of it.
 
-## Frontend structure (`index.html`)
+## Frontend structure
 
-Single file, vanilla JS, no framework. Rough shape:
+Vanilla JS, no framework, no build step. `index.html` is only the page
+shell (header, `<main id="app">`, footer); it loads the Supabase JS UMD
+client from a CDN, the stylesheets under `css/`, and `js/app.js` as a
+native ES module. Layout follows `docs/phase1-implementation-map.md` §1:
 
-- A tiny hash-based router (`#/`, `#/poll/:id`, `#/admin`, `#/admin/new`,
-  `#/admin/edit/:id`, `#/admin/poll/:id`).
-- `sb` — the Supabase JS client, initialized once with the project URL
-  and anon key (both embedded directly, safe to be public).
-- `state` — the app's in-memory state (session, current org, route).
-- Admin views: auth, dashboard, poll builder (with the local
-  draft-recovery/autosave system — see `docs/QA.md`), results/monitor.
-- Public views: poll listing, poll detail / respond, results.
+- `js/app.js` — bootstrap: auth listener, header nav, the main
+  `render()` route table, and `init()`.
+- `js/router.js` — the hash router (`#/`, `#/poll/:id`, `#/admin`,
+  `#/admin/new`, `#/admin/edit/:id`, `#/admin/poll/:id`), `navigate()`,
+  and the `render()` hook views call.
+- `js/supabase-client.js` — `sb`, the single Supabase client, initialized
+  once with the project URL and anon key (both safe to be public).
+- `js/state.js` — `state`, the app's in-memory state (session, current
+  org, route), plus admin-context and org helpers derived from it.
+- `js/admin/` — `auth.js` (sign-in / bootstrap), `dashboard.js`,
+  `org-settings.js` (org default timezone), `poll-manage.js` (monitor,
+  lifecycle, voter codes, CSV), `poll-builder.js` +
+  `poll-builder-questions.js` (poll builder), and `draft-recovery.js`
+  (the local draft-recovery/autosave store — see `docs/QA.md`).
+- `js/public/` — `poll-list.js`, `poll-response.js` (poll detail /
+  respond), `results-view.js` (results, shared with admin).
+- `js/shared/` — `helpers.js`, `timezone.js`, `question-types.js`
+  (respondent question rendering, shared by the builder preview),
+  `export-csv.js`.
+- `css/` — `tokens.css`, `base.css`, `components.css`, `admin.css`,
+  `public.css`, loaded in that order.
 - All timezone-sensitive rendering converts between the poll's configured
   timezone and UTC at the render/read boundary — `draft.open_at`,
   `draft.close_at`, and every option's `slot_start`/`slot_end` are always

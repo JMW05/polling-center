@@ -4,9 +4,9 @@
 
 - **Production URL**: `https://polls.wwjanado.com`
 - **Host**: Cloudflare Pages (or equivalent static Cloudflare hosting).
-  This app is a single static `index.html` file with no build step, so
-  the Cloudflare Pages "no framework / static HTML" project type applies
-  directly — there's nothing to build.
+  This app is plain static files (`index.html` plus `css/` and `js/` ES
+  modules) with no build step, so the Cloudflare Pages "no framework /
+  static HTML" project type applies directly — there's nothing to build.
 - **Do not use Netlify** for future deployments of this project (see
   `CLAUDE.md`). This app previously lived on Netlify; that's being
   replaced by Cloudflare going forward.
@@ -18,7 +18,7 @@
    via `wrangler pages deploy` / drag-and-drop if a manual deploy is
    preferred for a given release.
 2. Build settings: no build command, output directory `/` (the repo
-   root, since `index.html` lives there directly).
+   root, since `index.html`, `css/` and `js/` live there directly).
 3. Attach the custom domain `polls.wwjanado.com` to the Pages project in
    Cloudflare, and point its DNS at Cloudflare per Cloudflare's own
    instructions for that domain.
@@ -39,7 +39,7 @@ for project `srbiynpchtwtpzcyrhgr`. Do this *before or immediately after*
 automatically, and a stale Site URL sends real users' confirmation/reset
 emails to a dead page.
 
-As defense-in-depth, `index.html`'s sign-up call also passes
+As defense-in-depth, the sign-up call (`js/admin/auth.js`) also passes
 `emailRedirectTo`, computed from `location.origin`/`location.pathname` at
 runtime rather than hardcoded — so it always points at whatever domain
 the page is actually being served from. This is a backstop, not a

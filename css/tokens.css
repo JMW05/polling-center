@@ -1,0 +1,13 @@
+/* Design tokens: :root custom properties. Extracted unchanged from the former inline <style> in index.html. */
+
+:root {
+  --navy: #1a2f4b;
+  --navy-light: #2c4a72;
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --border: #e1e4ea;
+  --text: #1c2331;
+  --muted: #6b7280;
+  --good: #1f7a4d;
+  --bad: #b3261e;
+}

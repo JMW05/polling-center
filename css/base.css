@@ -1,0 +1,65 @@
+/* Resets, typography, page chrome (header/main/footer) and form-control primitives. Extracted unchanged. */
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding-bottom: 60px;
+}
+header {
+  background: var(--navy);
+  color: #fff;
+  padding: 16px 16px 14px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+header .top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+header h1 {
+  font-size: 19px;
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+}
+header .sub {
+  font-size: 12.5px;
+  color: #cfd9e6;
+  margin-top: 2px;
+}
+button { font: inherit; cursor: pointer; }
+.pill-btn {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.pill-btn:hover { background: rgba(255,255,255,0.2); }
+main { max-width: 680px; margin: 0 auto; padding: 16px; }
+select, input[type=text], input[type=password], input[type=email],
+input[type=number], input[type=datetime-local], textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  background: #fff;
+  color: var(--text);
+  font-family: inherit;
+}
+textarea { resize: vertical; min-height: 60px; }
+label { font-size: 13px; font-weight: 600; color: var(--muted); display: block; margin: 14px 0 5px; }
+label:first-child { margin-top: 0; }
+.hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+fieldset { border: none; padding: 0; margin: 0; }
+footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px 16px 40px; }

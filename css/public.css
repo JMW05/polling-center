@@ -1,0 +1,25 @@
+/* Respondent-facing layout: answer option rows and results bars. Extracted unchanged. */
+
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.option-row:hover { border-color: var(--navy-light); }
+.option-row input { width: 17px; height: 17px; flex-shrink: 0; }
+.option-row .txt { flex: 1; font-size: 14.5px; }
+.bar-wrap { margin-bottom: 10px; }
+.bar-label { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 4px; }
+.bar-label .pct { color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar-track { background: #eef0f3; border-radius: 6px; height: 8px; overflow: hidden; }
+.bar-fill { background: var(--navy); height: 100%; border-radius: 6px; }
+.bar-wrap.final .bar-fill { background: var(--good); }
+.bar-wrap.final .bar-label span:first-child::before { content: "\2605  "; }
+.bar-wrap.top .bar-fill { background: #3f7a3f; }
+.respondents-line { font-size: 12px; color: var(--muted); margin: -4px 0 8px 2px; }
+.most-avail { font-size: 11px; font-weight: 700; color: var(--good); margin-left: 6px; }

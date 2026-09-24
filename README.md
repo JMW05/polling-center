@@ -79,6 +79,11 @@ To sanity-check the frontend's JavaScript syntax before committing:
 for f in $(find js -name '*.js'); do node --input-type=module --check < "$f" || echo "FAILED: $f"; done
 ```
 
+For refactors that must not change behavior, `tests/frontend-equivalence/`
+compares the current tree against an earlier commit in headless Chromium
+with a fake Supabase backend (see its README). It is not a substitute
+for browser QA against the real Supabase project.
+
 ## Docs
 
 - [`docs/architecture.md`](docs/architecture.md) — data model, RPC

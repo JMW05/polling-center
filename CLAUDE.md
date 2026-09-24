@@ -9,7 +9,10 @@ before overriding it.
 
 ## Hosting
 
-- The frontend is a single static `index.html` file. It is hosted on
+- The frontend is plain static files with no build step: `index.html`
+  (page shell) plus native ES modules under `js/` (loaded with
+  `<script type="module">`), stylesheets under `css/`, and icons under
+  `assets/` — see `docs/architecture.md`. It is hosted on
   **Cloudflare Pages** (or equivalent static Cloudflare hosting) at
   **`https://polls.wwjanado.com`**. See `docs/deployment.md`.
 - **Do not use Netlify for future Polling Center deployments.** This
@@ -17,8 +20,8 @@ before overriding it.
   Cloudflare Pages going forward. Don't reintroduce a Netlify config,
   Netlify-specific build settings, or Netlify deploy instructions.
 - Do not add a build step, bundler, or framework dependency unless Jana
-  explicitly asks for one. The single-file-static-hosting shape is
-  deliberate.
+  explicitly asks for one. The plain-static-files shape (native ES
+  modules, served as-is) is deliberate.
 
 ## Backend / Supabase
 

@@ -1,0 +1,11 @@
+{
+  "name": "polling-center-frontend-equivalence",
+  "private": true,
+  "description": "Headless old-vs-new frontend equivalence check with a fake Supabase backend. Test tooling only; not part of the deployed site.",
+  "scripts": {
+    "test": "node run.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  }
+}

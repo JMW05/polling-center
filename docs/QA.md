@@ -27,6 +27,19 @@ was, by a human, in a browser, against the deployed site.
 | WWJanaDo favicon shows in the browser tab (and as the iOS home-screen icon) | pending (visual check) |
 | Frontend module extraction (zero behavior change) — full baseline re-run on the branch preview | pending (automated headless parity check vs. the pre-extraction `index.html` against a stubbed backend: identical — not a browser test) |
 
+## Known issues (pre-existing — not regressions from the module extraction)
+
+Both behave identically in the pre-extraction single-file `index.html`
+(`cf15b38`) and in the ES-module version: the frontend equivalence
+harness (`tests/frontend-equivalence/`) captures the same behavior on
+both sides. Recorded here so they aren't mistaken for regressions; not
+yet fixed.
+
+| Issue | Status |
+|---|---|
+| **Draft poll "Edit" button doesn't leave the editor open.** On a draft poll's admin page, clicking Edit navigates to `#/admin/edit/<id>`, but the lifecycle-button handler then navigates back to `#/admin/poll/<id>` and reloads, so the admin lands back on the poll page. Going directly to `#/admin/edit/<id>` works. | pre-existing, open (not fixed yet) |
+| **"Your sign-in session expired…" message is never visible.** When a save fails because the Supabase session really expired, the builder shows that message, then immediately signs out and re-renders to the sign-in screen, which wipes it before the admin can read it. Draft restoration after signing back in still works (the Restore/Discard prompt appears). | pre-existing, open (not fixed yet) |
+
 ## Context on the pending items
 
 The "pending" rows above all belong to the local draft-recovery/autosave

@@ -1,0 +1,37 @@
+# What Wrangler uploads as the public site (gitignore syntax).
+# Allowlist: ignore everything at the repository root, then re-include
+# only the frontend. Anything new added to the repo stays private unless
+# it is added here on purpose.
+/*
+!/index.html
+!/css/
+!/js/
+!/assets/
+
+# Development-only files are excluded everywhere, even inside the allowed
+# folders above, in case one ever lands there.
+.git
+.gitignore
+.assetsignore
+.wrangler
+wrangler.json
+wrangler.jsonc
+wrangler.toml
+node_modules
+package.json
+package-lock.json
+npm-shrinkwrap.json
+yarn.lock
+pnpm-lock.yaml
+bun.lock
+bun.lockb
+.npmrc
+.nvmrc
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+*.md
+*.map
+.DS_Store
+Thumbs.db

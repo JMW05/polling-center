@@ -1,0 +1,21 @@
+// Cloudflare Worker config for Polling Center: a static-assets-only Worker.
+// No Worker script and no build step. The repository root is the assets
+// directory, and .assetsignore limits what is uploaded to the frontend:
+// index.html, css/, js/, assets/.
+//
+// "name" must match the existing Worker so Previews/versions attach to it
+// instead of creating a new Worker. This file deliberately has no routes or
+// custom domains: polls.wwjanado.com stays configured in the Cloudflare
+// dashboard and is not touched from here.
+//
+// Branch QA (non-production Preview, never receives production traffic):
+//   npx wrangler@4 preview --name qa
+// Production is only changed by `wrangler deploy` / `wrangler versions deploy`.
+{
+  "name": "polling-center",
+  "compatibility_date": "2026-09-24",
+  "assets": {
+    "directory": "."
+  },
+  "previews": {}
+}

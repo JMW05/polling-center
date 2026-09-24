@@ -1,5 +1,5 @@
 import { sb } from "../supabase-client.js";
-import { navigate, publicPollUrl } from "../router.js";
+import { navigate, publicPollUrl, currentRenderGeneration, isStaleRender } from "../router.js";
 import { subtitle, el, esc, msgBox, typeLabel, statusLabel } from "../shared/helpers.js";
 import { fmtDateTime } from "../shared/timezone.js";
 import { optionLabelFull } from "../shared/question-types.js";
@@ -14,7 +14,9 @@ export async function renderAdminPoll(container, pollId) {
   back.addEventListener("click", function () { navigate("#/admin"); });
   container.appendChild(back);
 
+  var gen = currentRenderGeneration();
   var pollRes = await sb.from("polls").select("*").eq("id", pollId).single();
+  if (isStaleRender(gen)) return;
   if (pollRes.error) { container.appendChild(msgBox("error", "Couldn't load poll.")); return; }
   var poll = pollRes.data;
   subtitle.textContent = poll.title;
@@ -52,6 +54,7 @@ export async function renderAdminPoll(container, pollId) {
 
   // participation monitor
   var monRes = await sb.rpc("get_poll_admin_monitor", { p_poll_id: poll.id });
+  if (isStaleRender(gen)) return;
   if (!monRes.error && monRes.data) {
     var mon = monRes.data;
     var statCard = el("div", "card");
@@ -128,17 +131,21 @@ export async function renderAdminPoll(container, pollId) {
 
   // election tokens
   if (poll.poll_type === "election" || poll.access_mode === "token") {
-    container.appendChild(await tokenGeneratorCard(poll));
+    var tokenCard = await tokenGeneratorCard(poll);
+    if (isStaleRender(gen)) return;
+    container.appendChild(tokenCard);
   }
 
   // results (admin view — same visibility rules as everyone, plus admin_only)
   var resultsCard = el("div", null);
   await appendResults(resultsCard, poll, null);
+  if (isStaleRender(gen)) return;
   container.appendChild(resultsCard);
 
   // meeting: set final time
   if (poll.poll_type === "meeting") {
     var qRes = await sb.from("questions").select("id, options(id,label,slot_start,slot_end,order_index)").eq("poll_id", poll.id).limit(1).single();
+    if (isStaleRender(gen)) return;
     if (!qRes.error && qRes.data && qRes.data.options && qRes.data.options.length) {
       var finalCard = el("div", "card");
       finalCard.appendChild(el("label", null, "Set final meeting time"));
@@ -214,7 +221,9 @@ export async function tokenGeneratorCard(poll) {
   });
   card.appendChild(genBtn); card.appendChild(out);
 
+  var gen = currentRenderGeneration();
   var rosterRes = await sb.from("voter_eligibility").select("label,used").eq("poll_id", poll.id).order("created_at");
+  if (isStaleRender(gen)) return card; // caller checks too and discards it
   if (!rosterRes.error && rosterRes.data && rosterRes.data.length) {
     var rosterWrap = el("div", null); rosterWrap.style.marginTop = "12px";
     rosterWrap.appendChild(el("div", "muted", "Issued so far:"));

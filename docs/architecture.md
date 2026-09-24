@@ -134,11 +134,19 @@ native ES module. Layout follows `docs/phase1-implementation-map.md` §1:
   `render()` route table, and `init()`.
 - `js/router.js` — the hash router (`#/`, `#/poll/:id`, `#/admin`,
   `#/admin/new`, `#/admin/edit/:id`, `#/admin/poll/:id`), `navigate()`,
-  and the `render()` hook views call.
+  the `render()` hook views call, and render generations: every
+  `render()` starts a new generation, and render-path code checks
+  `isStaleRender(gen)` after each `await` so only the newest render can
+  touch the DOM.
+- `js/session.js` — auth identity: `init()` owns startup (session,
+  admin context, first render); afterwards auth events re-render only
+  when the signed-in user id actually changes, not on the `SIGNED_IN`
+  supabase-js emits for restored sessions and tab refocus.
 - `js/supabase-client.js` — `sb`, the single Supabase client, initialized
   once with the project URL and anon key (both safe to be public).
 - `js/state.js` — `state`, the app's in-memory state (session, current
-  org, route), plus admin-context and org helpers derived from it.
+  org, route), plus admin-context and org helpers derived from it
+  (`ensureOrgsLoaded()` shares one in-flight organizations request).
 - `js/admin/` — `auth.js` (sign-in / bootstrap), `dashboard.js`,
   `org-settings.js` (org default timezone), `poll-manage.js` (monitor,
   lifecycle, voter codes, CSV), `poll-builder.js` +

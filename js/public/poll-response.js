@@ -1,5 +1,5 @@
 import { sb } from "../supabase-client.js";
-import { navigate } from "../router.js";
+import { navigate, currentRenderGeneration, isStaleRender } from "../router.js";
 import { subtitle, el, esc, msgBox, typeLabel, statusLabel, friendlyError } from "../shared/helpers.js";
 import { fmtDateTime } from "../shared/timezone.js";
 import { questionField } from "../shared/question-types.js";
@@ -32,7 +32,9 @@ export async function renderPublicPollDetail(container, pollId) {
   var wrap = el("div", null); wrap.appendChild(el("div", "empty", "Loading…"));
   container.appendChild(wrap);
 
+  var gen = currentRenderGeneration();
   var res = await sb.rpc("get_public_poll_detail", { p_poll_id: pollId });
+  if (isStaleRender(gen)) return;
   if (res.error || !res.data || res.data.error) {
     wrap.innerHTML = "";
     wrap.appendChild(msgBox("error", "This poll isn't available. It may not be open yet, or the link may be incorrect."));

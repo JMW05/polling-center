@@ -44,6 +44,23 @@ export function hasAnyAdminRole() {
 // ============================================================
 // ORGS
 // ============================================================
+// Deduplicates the organizations fetch: while one load is in flight,
+// ensureOrgsLoaded() hands every caller the same Promise instead of
+// starting another request. Cleared when that request settles (success
+// or failure) and on a real auth identity change (session.js).
+var orgsInFlight = null;
+export function ensureOrgsLoaded() {
+  if (state.orgs.length) return Promise.resolve();
+  if (!orgsInFlight) {
+    var p = loadOrgs();
+    orgsInFlight = p;
+    var clear = function () { if (orgsInFlight === p) orgsInFlight = null; };
+    p.then(clear, clear);
+  }
+  return orgsInFlight;
+}
+export function resetOrgsInFlight() { orgsInFlight = null; }
+// Always fetches (used directly after creating an organization, to refresh).
 export async function loadOrgs() {
   var res = await sb.from("organizations").select("id,name,default_timezone").order("name");
   if (res.error) throw res.error;

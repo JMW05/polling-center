@@ -1,6 +1,6 @@
 import { sb } from "../supabase-client.js";
 import { state } from "../state.js";
-import { navigate, render } from "../router.js";
+import { navigate, render, currentRenderGeneration, isStaleRender } from "../router.js";
 import { subtitle, el, esc, msgBox, typeLabel, statusLabel } from "../shared/helpers.js";
 import { fmtShort } from "../shared/timezone.js";
 
@@ -49,8 +49,10 @@ export async function renderPublicList(container) {
   var listWrap = el("div", null); listWrap.appendChild(el("div", "empty", "Loading…"));
   container.appendChild(listWrap);
 
+  var gen = currentRenderGeneration();
   try {
     var res = await sb.rpc("list_public_polls", { p_org_id: state.orgId, p_status: state.orgListTab });
+    if (isStaleRender(gen)) return;
     if (res.error) throw res.error;
     var polls = res.data || [];
     listWrap.innerHTML = "";
@@ -60,6 +62,7 @@ export async function renderPublicList(container) {
     }
     polls.forEach(function (p) { listWrap.appendChild(publicPollCard(p)); });
   } catch (e) {
+    if (isStaleRender(gen)) return;
     listWrap.innerHTML = "";
     listWrap.appendChild(msgBox("error", e.message || String(e)));
   }

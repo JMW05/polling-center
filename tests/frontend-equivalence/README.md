@@ -1,4 +1,14 @@
-# Frontend equivalence harness
+# Frontend regression harness
+
+Two checks live here:
+
+- **`run.js` — old-vs-new equivalence** (below): does the current tree do
+  exactly what an earlier commit did?
+- **`auth-startup.js` — startup / auth-event behavior** (see "Startup and
+  auth events" further down): does the app render once and ignore
+  same-user auth noise, using the real supabase-js library?
+
+## Equivalence (`run.js`)
 
 A regression check for **refactors that must not change behavior** (it was
 written for the ES-module extraction in commit `aec3444`). It loads two
@@ -43,7 +53,8 @@ election token hashing, or result-visibility rules as enforced server-side.
 
 ## How to run
 
-Requirements: `git`, Node.js 18+, and Playwright with Chromium.
+Requirements: `git`, Node.js 18+, Playwright with Chromium, and (for
+`auth-startup.js` only) the pinned `@supabase/supabase-js` devDependency.
 
 ```bash
 # one-time, from this directory (or use a global Playwright install)
@@ -53,6 +64,8 @@ npx playwright install chromium
 
 # run, from anywhere inside the repo
 node tests/frontend-equivalence/run.js
+node tests/frontend-equivalence/auth-startup.js
+# or, from this directory: npm test  (runs both)
 ```
 
 It exits `0` and prints `RESULT: IDENTICAL` when the two versions match,
@@ -93,15 +106,55 @@ difference, and a change to labels or layout may need the scenario in
   on subscribe and `SIGNED_IN` / `SIGNED_OUT` on explicit sign-in/out, and
   it answers instantly. The real library also emits `SIGNED_IN` when it
   restores a stored session at startup and on every tab refocus, and real
-  requests take time, so overlapping `render()` calls (see "Known issues"
-  in `docs/QA.md`) do not show up here.
+  requests take time, so overlapping `render()` calls can't show up in
+  `run.js`. `auth-startup.js` covers exactly that.
 - **Favicon rendering**, visual appearance at real viewport sizes, and
   anything outside `<body>` apart from the page title are not compared.
 
+## Startup and auth events (`auth-startup.js`)
+
+Loads the **real supabase-js UMD build** (the pinned `@supabase/supabase-js`
+devDependency) in headless Chromium, so the library's own auth event
+sequence is exercised. Only Supabase's HTTP endpoints are faked, with a
+fixed 80 ms latency, so nothing reaches the real project. A small
+observer records the auth events the app's client emits and counts how
+often `#app` is torn down and rebuilt. It doesn't change app behavior.
+
+It asserts, with pass/fail per check:
+
+- signed-out first load: one UI, one `organizations` and one
+  `list_public_polls` request;
+- restored signed-in session: supabase-js emits `SIGNED_IN` at startup,
+  yet there is one visible UI (one org selector, one tab bar, one "No
+  open polls" message), one `organizations`, one `is_platform_owner`, one
+  `org_admins` and one `list_public_polls` request;
+- tab hide → show: supabase-js emits another `SIGNED_IN` for the same
+  user, and there are no rebuilds and no new app requests;
+- the poll builder loaded with a restored session: one form, and a value
+  typed immediately before a tab switch (inside the 800 ms local-draft
+  debounce) is still there afterwards;
+- sign-out from the dashboard: one `SIGNED_OUT`, public list shown once;
+- sign-in again as the same user, and then as a different user: one
+  `SIGNED_IN`, one admin-context load (for the right user id), and the
+  dashboard shown once;
+- overlapping non-auth renders: a second render started while the first
+  organizations request is in flight produces one list and one request,
+  and leaving a poll page before its data arrives doesn't let the
+  abandoned render overwrite the header.
+
+```bash
+node tests/frontend-equivalence/auth-startup.js                  # working tree
+BASE_REF=6330a45 node tests/frontend-equivalence/auth-startup.js # an older commit
+```
+
+Run against `6330a45` (before the startup/auth fix) it fails 17–18 of
+the 43 checks (the exact count depends on timing), which shows it detects the
+original bug; against the fix it passes 43/43. It exits `0` / `RESULT: PASS` when every check passes.
+
 ## This does NOT replace real browser QA
 
-Passing this harness shows the new code does the same thing as the old
-code **against a fake backend**. It is not a browser test in the sense
+Passing these checks shows the frontend behaves as expected **against a
+fake backend** (fixture data, faked HTTP). It is not a browser test in the sense
 `CLAUDE.md` and `docs/QA.md` use: it doesn't exercise the real Supabase
 project, RLS, auth emails or the deployed site. Nothing may be marked
 "browser-tested" or `PASS` in `docs/QA.md` on the strength of this

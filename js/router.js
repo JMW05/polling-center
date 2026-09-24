@@ -24,6 +24,18 @@ var renderer = null;
 export function setRenderer(fn) { renderer = fn; }
 export function render() { return renderer.apply(null, arguments); }
 
+// Render generations: every render() call starts a new generation, and
+// only the newest one may touch the DOM. Any code on a render path takes
+// `var gen = currentRenderGeneration();` before its first await and,
+// after EVERY await, bails out with `if (isStaleRender(gen)) return;`
+// before appending/replacing anything. That makes overlapping renders
+// (auth events, route changes, future Realtime refreshes) safe: a
+// superseded render simply stops instead of adding a second copy.
+var renderGeneration = 0;
+export function beginRender() { return ++renderGeneration; }
+export function currentRenderGeneration() { return renderGeneration; }
+export function isStaleRender(gen) { return gen !== renderGeneration; }
+
 export function mountRouter() {
   window.addEventListener("hashchange", function () { state.route = parseHash(); render(); });
 }

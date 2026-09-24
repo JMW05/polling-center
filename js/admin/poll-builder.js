@@ -1,6 +1,6 @@
 import { sb } from "../supabase-client.js";
 import { state, orgName, currentOrgDefaultTz } from "../state.js";
-import { navigate, render } from "../router.js";
+import { navigate, render, currentRenderGeneration, isStaleRender } from "../router.js";
 import { subtitle, el, esc, msgBox, typeLabel, friendlyError, uid, debounce } from "../shared/helpers.js";
 import { TZ_LIST, utcIsoToZonedInputValue, zonedTimeToUtcIso } from "../shared/timezone.js";
 import { questionField } from "../shared/question-types.js";
@@ -44,12 +44,15 @@ export async function renderPollForm(container, existingPollId) {
     questions: [],
   };
 
+  var gen = currentRenderGeneration();
   if (isEdit) {
     var pRes = await sb.from("polls").select("*").eq("id", existingPollId).single();
+    if (isStaleRender(gen)) return;
     if (pRes.error) { container.appendChild(msgBox("error", "Couldn't load poll.")); return; }
     if (pRes.data.status !== "draft") { container.appendChild(msgBox("error", "Only draft polls can be edited. Duplicate this poll to make changes.")); return; }
     Object.assign(draft, pRes.data);
     var qRes = await sb.from("questions").select("*, options(*)").eq("poll_id", existingPollId).order("order_index");
+    if (isStaleRender(gen)) return;
     draft.questions = (qRes.data || []).sort(function (a, b) { return a.order_index - b.order_index; }).map(function (q) {
       var qd = newQuestionDraft(q.question_type);
       Object.assign(qd, { prompt: q.prompt, required: q.required, max_selections: q.max_selections, allow_write_in: q.allow_write_in, allow_abstain: q.allow_abstain, rating_min: q.rating_min || 1, rating_max: q.rating_max || 5 });

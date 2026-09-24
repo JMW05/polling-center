@@ -1,10 +1,13 @@
 import { sb } from "../supabase-client.js";
+import { currentRenderGeneration, isStaleRender } from "../router.js";
 import { el, esc, msgBox } from "../shared/helpers.js";
 import { optionLabelFull } from "../shared/question-types.js";
 
 // ---- results rendering (shared by public + admin) ----
 export async function appendResults(container, poll, dedupKeyForVisibility) {
+  var gen = currentRenderGeneration();
   var res = await sb.rpc("get_poll_results", { p_poll_id: poll.id, p_dedup_key: dedupKeyForVisibility || null });
+  if (isStaleRender(gen)) return;
   if (res.error) { container.appendChild(msgBox("error", "Couldn't load results.")); return; }
   var data = res.data;
   if (!data.visible) {

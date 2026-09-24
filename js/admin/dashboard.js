@@ -1,6 +1,6 @@
 import { sb } from "../supabase-client.js";
 import { state, isAdminOfOrg, loadOrgs, orgName } from "../state.js";
-import { navigate, render } from "../router.js";
+import { navigate, render, currentRenderGeneration, isStaleRender } from "../router.js";
 import { subtitle, el, esc, msgBox, typeLabel, statusLabel } from "../shared/helpers.js";
 import { orgTimezoneCard } from "./org-settings.js";
 
@@ -75,7 +75,9 @@ export async function renderAdmin(container) {
   var listWrap = el("div", null); listWrap.appendChild(el("div", "empty", "Loading…"));
   container.appendChild(listWrap);
 
+  var gen = currentRenderGeneration();
   var res = await sb.from("polls").select("*").eq("org_id", state.orgId).eq("status", state.adminTab).order("created_at", { ascending: false });
+  if (isStaleRender(gen)) return;
   listWrap.innerHTML = "";
   if (res.error) { listWrap.appendChild(msgBox("error", res.error.message)); return; }
   var polls = res.data || [];

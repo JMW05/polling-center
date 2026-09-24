@@ -3,8 +3,9 @@
 // former inline <script>: hashchange listener, auth listener, header
 // listeners, then init().
 import { sb } from "./supabase-client.js";
-import { state, refreshAdminContext, hasAnyAdminRole, loadOrgs } from "./state.js";
-import { parseHash, navigate, render, setRenderer, mountRouter } from "./router.js";
+import { state, refreshAdminContext, hasAnyAdminRole, ensureOrgsLoaded } from "./state.js";
+import { parseHash, navigate, render, setRenderer, mountRouter, beginRender, isStaleRender } from "./router.js";
+import { applySession, completeBoot, userIdOf } from "./session.js";
 import { msgBox } from "./shared/helpers.js";
 import { renderPublicList } from "./public/poll-list.js";
 import { renderPublicPollDetail } from "./public/poll-response.js";
@@ -19,19 +20,15 @@ mountRouter();
 // AUTH
 // ============================================================
 sb.auth.onAuthStateChange(function (evt, session) {
-  state.session = session;
-  // IMPORTANT: Supabase fires this callback on every auth event,
-  // including TOKEN_REFRESHED -- which happens automatically and
-  // silently in the background, well before real session expiry, as
-  // part of normal token upkeep. It does NOT mean the user's session
-  // expired or that anything about their identity changed. Calling the
-  // full render() here on every TOKEN_REFRESHED used to wipe out
-  // whatever the admin had in progress (e.g. an unsaved poll-builder
-  // form), because render() tears down and rebuilds #app from scratch.
-  // Only actual identity transitions should trigger a re-render.
-  if (evt === "SIGNED_IN" || evt === "SIGNED_OUT" || evt === "USER_UPDATED") {
-    refreshAdminContext().then(render);
-  }
+  // IMPORTANT: Supabase fires this callback on every auth event --
+  // INITIAL_SESSION, TOKEN_REFRESHED, and also SIGNED_IN for a session it
+  // merely restored from storage (at startup and on every tab refocus).
+  // None of those mean the user changed, and render() tears down and
+  // rebuilds #app from scratch (wiping e.g. an unsaved poll-builder form).
+  // applySession() (session.js) records the session and re-renders only
+  // on a real identity change, and never during startup, which init()
+  // owns.
+  applySession(session);
 });
 
 // ============================================================
@@ -61,15 +58,20 @@ adminToggleBtn.addEventListener("click", async function () {
 // ============================================================
 // MAIN RENDER
 // ============================================================
+// Only the newest renderApp() call may touch #app: each one starts a new
+// render generation and stops after any await once it's been superseded.
 async function renderApp() {
+  var gen = beginRender();
   updateAdminBtn();
   app.innerHTML = "";
   try {
-    if (!state.orgs.length) await loadOrgs();
+    if (!state.orgs.length) await ensureOrgsLoaded();
   } catch (e) {
+    if (isStaleRender(gen)) return;
     app.appendChild(msgBox("error", "Could not load organizations: " + (e.message || e)));
     return;
   }
+  if (isStaleRender(gen)) return;
 
   var route = state.route;
   if (route.view === "pollDetail") {
@@ -77,8 +79,10 @@ async function renderApp() {
   } else if (route.view === "admin" || route.view === "adminNew" || route.view === "adminPoll" || route.view === "adminEdit") {
     if (!state.session) {
       var sres = await sb.auth.getSession();
+      if (isStaleRender(gen)) return;
       state.session = sres.data.session;
       if (state.session) await refreshAdminContext();
+      if (isStaleRender(gen)) return;
     }
     if (!state.session) { renderAdminAuth(app); return; }
     if (!hasAnyAdminRole()) { await renderAdminBootstrap(app); return; }
@@ -92,10 +96,21 @@ async function renderApp() {
 }
 setRenderer(renderApp);
 
+// init() is the single owner of startup: it resolves the session, loads
+// admin context for it, and does the first render. Auth events that
+// arrive meanwhile only update state.session (see session.js); if one
+// changed the user while admin context was loading, reload it for the
+// user we'll actually render.
 (async function init() {
   var sres = await sb.auth.getSession();
   state.session = sres.data.session;
-  if (state.session) await refreshAdminContext();
+  var id;
+  do {
+    id = userIdOf(state.session);
+    if (state.session) await refreshAdminContext();
+    else { state.isPlatformOwner = false; state.adminOrgIds = null; }
+  } while (userIdOf(state.session) !== id);
+  completeBoot();
   state.route = parseHash();
   render();
 })();

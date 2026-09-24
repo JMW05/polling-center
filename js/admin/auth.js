@@ -1,6 +1,7 @@
 import { sb } from "../supabase-client.js";
 import { state, refreshAdminContext } from "../state.js";
-import { render } from "../router.js";
+import { render, currentRenderGeneration, isStaleRender } from "../router.js";
+import { applySession } from "../session.js";
 import { subtitle, el, msgBox } from "../shared/helpers.js";
 
 // ============================================================
@@ -50,15 +51,15 @@ export function renderAdminAuth(container) {
       if (mode === "signin") {
         var r = await sb.auth.signInWithPassword({ email: email, password: pw });
         if (r.error) throw r.error;
-        state.session = r.data.session;
-        await refreshAdminContext();
         // Do NOT force-navigate to #/admin here. If the admin was
         // bounced to sign-in mid-task (e.g. re-authenticating after a
         // session interruption while editing a poll), state.route is
         // already pointing at wherever they were trying to go
-        // (adminNew/adminEdit/etc); just re-render in place so any
-        // pending draft-recovery flow on that route can pick up.
-        render();
+        // (adminNew/adminEdit/etc); re-render in place so any pending
+        // draft-recovery flow on that route can pick up. applySession()
+        // does that render exactly once: the SIGNED_IN listener usually
+        // gets there first, and then this call is a no-op.
+        await applySession(r.data.session);
       } else {
         var r2 = await sb.auth.signUp({
           email: email,
@@ -67,9 +68,7 @@ export function renderAdminAuth(container) {
         });
         if (r2.error) throw r2.error;
         if (r2.data.session) {
-          state.session = r2.data.session;
-          await refreshAdminContext();
-          render();
+          await applySession(r2.data.session);
         } else {
           msgHolder.innerHTML = "";
           msgHolder.appendChild(msgBox("success", "Account created. Check your email to confirm it, then sign in."));
@@ -100,16 +99,20 @@ export async function renderAdminBootstrap(container) {
   card.appendChild(msgHolder);
   container.appendChild(card);
 
+  var gen = currentRenderGeneration();
   if (!state.bootstrapAttempted) {
     state.bootstrapAttempted = true;
     try {
       var r = await sb.rpc("bootstrap_platform_owner");
       if (!r.error) {
+        // Admin rights just changed: reload them and render the newest
+        // view even if this render was superseded meanwhile.
         await refreshAdminContext();
         render();
         return;
       }
     } catch (e) { /* not authorized / already bootstrapped — fall through */ }
+    if (isStaleRender(gen)) return;
   }
   msgHolder.innerHTML = "";
   msgHolder.appendChild(msgBox("info", "Ask an existing administrator to add your account to an organization."));

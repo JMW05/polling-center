@@ -29,7 +29,7 @@ was, by a human, in a browser, against the deployed site.
 
 ## Known issues (pre-existing — not regressions from the module extraction)
 
-Both behave identically in the pre-extraction single-file `index.html`
+All of these behave identically in the pre-extraction single-file `index.html`
 (`cf15b38`) and in the ES-module version: the frontend equivalence
 harness (`tests/frontend-equivalence/`) captures the same behavior on
 both sides. Recorded here so they aren't mistaken for regressions; not
@@ -39,6 +39,8 @@ yet fixed.
 |---|---|
 | **Draft poll "Edit" button doesn't leave the editor open.** On a draft poll's admin page, clicking Edit navigates to `#/admin/edit/<id>`, but the lifecycle-button handler then navigates back to `#/admin/poll/<id>` and reloads, so the admin lands back on the poll page. Going directly to `#/admin/edit/<id>` works. | pre-existing, open (not fixed yet) |
 | **"Your sign-in session expired…" message is never visible.** When a save fails because the Supabase session really expired, the builder shows that message, then immediately signs out and re-renders to the sign-in screen, which wipes it before the admin can read it. Draft restoration after signing back in still works (the Restore/Discard prompt appears). | pre-existing, open (not fixed yet) |
+| **Signed-in visitors get the UI built twice on page load.** With a saved Supabase session in the browser, any page load shows two copies of the page (public list: two organization selectors, two Open/Past tabs, two "No open polls right now"; `#/admin/new`: two poll-builder forms), and `is_platform_owner`, `org_admins`, `organizations` and the view's own fetch (e.g. `list_public_polls`) are each requested twice. Signed-out visitors (e.g. incognito) get one copy. Cause: two startup paths each call `render()`: `init()` (after `getSession` + `refreshAdminContext`) and the `onAuthStateChange` listener, because supabase-js emits `SIGNED_IN` (not just `INITIAL_SESSION`) when it restores a stored session at startup. `render()` isn't safe to run twice at once: it empties `#app` first, then awaits `loadOrgs()` and the view's data before appending, so both calls append into the same container. The Sign-in button has the same double call (its handler and the `SIGNED_IN` listener both render), which duplicates requests but usually not the visible UI. Reproduced identically on `cf15b38` and the module-extraction branch (real supabase-js 2.117.1, faked network). | pre-existing, open (not fixed yet) |
+| **Returning to the tab re-renders the whole page for signed-in admins.** supabase-js re-checks the session whenever the tab becomes visible and emits `SIGNED_IN` again; the listener treats that as an identity change and calls `render()`, which rebuilds `#app`. In the poll builder, anything typed in the last ~800 ms before switching away (not yet autosaved) is lost; older edits come back only through the Restore/Discard prompt. (The existing guard only covers `TOKEN_REFRESHED`.) Reproduced identically on `cf15b38` and the module-extraction branch. | pre-existing, open (not fixed yet) |
 
 ## Context on the pending items
 

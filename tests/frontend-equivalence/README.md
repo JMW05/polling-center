@@ -89,6 +89,12 @@ difference, and a change to labels or layout may need the scenario in
 - **Clipboard.** The harness serves over plain `http://`, where
   `navigator.clipboard` doesn't exist, so "Copy link" throws the same
   error on both sides. Copying itself is not tested.
+- **Real supabase-js auth events.** The fake only emits `INITIAL_SESSION`
+  on subscribe and `SIGNED_IN` / `SIGNED_OUT` on explicit sign-in/out, and
+  it answers instantly. The real library also emits `SIGNED_IN` when it
+  restores a stored session at startup and on every tab refocus, and real
+  requests take time, so overlapping `render()` calls (see "Known issues"
+  in `docs/QA.md`) do not show up here.
 - **Favicon rendering**, visual appearance at real viewport sizes, and
   anything outside `<body>` apart from the page title are not compared.
 
